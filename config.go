@@ -28,10 +28,6 @@ func (c *config) updateWW(ww int) {
 
 var cfg config
 
-func (c *config) getPath(filename string) string {
-	return filepath.Join(c.homeFolder, filename)
-}
-
 func expandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()

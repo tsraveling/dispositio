@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	// "github.com/charmbracelet/lipgloss"
 )
@@ -41,7 +45,21 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m plannerViewModel) View() string {
-	return "hello, world"
+	now := time.Now()
+
+	// Find the Monday of the current week
+	weekday := now.Weekday()
+	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
+	monday := now.AddDate(0, 0, -daysUntilMonday)
+
+	var sb strings.Builder
+	for i := 0; i < 20; i++ {
+		weekStart := monday.AddDate(0, 0, i*7)
+		_, week := weekStart.ISOWeek()
+		date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
+		sb.WriteString(fmt.Sprintf("W%-3d %-5s ⚬\n", week, date))
+	}
+	return sb.String()
 }
 
 // var (
