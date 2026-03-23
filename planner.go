@@ -6,11 +6,13 @@ import (
 )
 
 type plannerViewModel struct {
+	prj       project
 	someValue string
 }
 
-func makeViewModel() (plannerViewModel, tea.Cmd) {
-	m := plannerViewModel{someValue: "example"}
+func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
+	// Copy project into value mode so we can mutate it bubbletea-style
+	m := plannerViewModel{prj: *p, someValue: "example"}
 	return m, m.Init()
 }
 

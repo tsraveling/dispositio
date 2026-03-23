@@ -17,6 +17,7 @@ func main() {
 	cfg = readConfig()
 
 	// Parse flags and positional args
+	// FIXME: Once dev is done, throw an error if an arg is not supplied
 	filename := "./ROADMAP.md"
 	for _, arg := range os.Args[1:] {
 		switch arg {
@@ -28,14 +29,14 @@ func main() {
 		}
 	}
 
-	err := loadProject(filename)
+	prj, err := loadProject(filename)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 		return
 	}
 
 	var m tea.Model
-	m, _ = makeSomeModel()
+	m, _ = makePlannerViewModel(prj)
 
 	p := tea.NewProgram(m)
 	p.Run()
