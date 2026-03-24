@@ -12,18 +12,18 @@ const (
 )
 
 var (
-	primaryColor       = lipgloss.Color("#3fbf3f") // monstery green
-	secondaryColor     = lipgloss.Color("#b0b0b0") // light gray
+	primaryColor       = lipgloss.Color("206")
+	secondaryColor     = lipgloss.Color("174") // light gray
+	textColor          = lipgloss.Color("254") // white
+	highlightColor     = lipgloss.Color("226")
 	gradientColorLeft  = lipgloss.Color("#7b2d8b") // dusky purple
 	gradientColorRight = lipgloss.Color("#2d8b4e") // dark mossy green
 	errorColor         = lipgloss.Color("#cc4444") // medium red
 	warningColor       = lipgloss.Color("#ccaa22") // yellow
 	logColor           = lipgloss.Color("#888888") // medium gray
 
-	logoStyle         = lipgloss.NewStyle().Bold(true).Foreground(primaryColor)
-	phaseDoneStyle    = lipgloss.NewStyle().Foreground(logColor).Strikethrough(true)
-	phaseStyle        = lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
-	phasePendingStyle = lipgloss.NewStyle().Foreground(secondaryColor)
+	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
+	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
 )
 
 func boxWidth(termWidth int) int {

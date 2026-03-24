@@ -148,6 +148,10 @@ func saveProject(p project) error {
 	return os.WriteFile(p.filePath, []byte(b.String()), 0644)
 }
 
+func (p *project) save() error {
+	return saveProject(*p)
+}
+
 func loadProject(fp string) (*project, error) {
 	data, err := os.ReadFile(fp)
 	if err != nil {
