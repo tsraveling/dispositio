@@ -42,12 +42,21 @@ func (m plannerViewModel) Init() tea.Cmd {
 // addNewAt inserts a new empty item after the given index and enters editing mode.
 func (m *plannerViewModel) addNewAt(index int) tea.Cmd {
 	newItem := item{title: "", duration: 1}
-	insertAt := index + 1
 
-	// Insert into slice
-	m.prj.items = append(m.prj.items, item{})
-	copy(m.prj.items[insertAt+1:], m.prj.items[insertAt:])
-	m.prj.items[insertAt] = newItem
+	var insertAt int
+
+	if len(m.prj.items) < 1 {
+		insertAt = 0
+		m.prj.items = []item{newItem}
+	} else {
+
+		insertAt = index + 1
+
+		// Insert into slice
+		m.prj.items = append(m.prj.items, item{})
+		copy(m.prj.items[insertAt+1:], m.prj.items[insertAt:])
+		m.prj.items[insertAt] = newItem
+	}
 
 	m.cursor = insertAt
 	m.mode = editingTitle
