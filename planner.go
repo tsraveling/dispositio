@@ -102,6 +102,18 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			cmd := m.addNewAt(m.cursor)
 			return m, cmd
+		case "shift+up", "K":
+			if m.cursor > 0 {
+				m.prj.items[m.cursor], m.prj.items[m.cursor-1] = m.prj.items[m.cursor-1], m.prj.items[m.cursor]
+				m.cursor--
+				m.prj.save()
+			}
+		case "shift+down", "J":
+			if m.cursor < len(m.prj.items)-1 {
+				m.prj.items[m.cursor], m.prj.items[m.cursor+1] = m.prj.items[m.cursor+1], m.prj.items[m.cursor]
+				m.cursor++
+				m.prj.save()
+			}
 		case "shift+left", "H":
 			if m.prj.items[m.cursor].duration > 1 {
 				m.prj.items[m.cursor].duration--
