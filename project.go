@@ -251,5 +251,10 @@ func loadProject(fp string) (*project, error) {
 	prj := project{filePath: fp, usesTimeline: true}
 	parseProject(string(data), &prj)
 
+	// Default start date to today if not set
+	if prj.startDate.IsZero() {
+		prj.startDate = time.Now()
+	}
+
 	return &prj, nil
 }

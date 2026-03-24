@@ -20,9 +20,20 @@ const (
 
 type plannerViewModel struct {
 	prj    project
-	cursor int // selected item index
+	cursor int // 0 = meta (start date), 1..N = items[0..N-1]
 	mode   plannerMode
 	input  textinput.Model
+}
+
+// itemIndex returns the index into prj.items for the current cursor,
+// or -1 if the cursor is on the meta item.
+func (m *plannerViewModel) itemIndex() int {
+	return m.cursor - 1
+}
+
+// onMeta returns true if the cursor is on the meta start-date item.
+func (m *plannerViewModel) onMeta() bool {
+	return m.cursor == 0
 }
 
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
@@ -39,26 +50,29 @@ func (m plannerViewModel) Init() tea.Cmd {
 	return nil
 }
 
-// addNewAt inserts a new empty item after the given index and enters editing mode.
-func (m *plannerViewModel) addNewAt(index int) tea.Cmd {
+// addNewAt inserts a new empty item after the current cursor position and enters editing mode.
+// cursor is in cursor-space (0=meta, 1+=items).
+func (m *plannerViewModel) addNewAt(cursor int) tea.Cmd {
 	newItem := item{title: "", duration: 1}
 
-	var insertAt int
-
-	if len(m.prj.items) < 1 {
-		insertAt = 0
-		m.prj.items = []item{newItem}
+	// Convert cursor to item index; if on meta (0), insert at position 0
+	itemIdx := cursor // item insert position in items slice
+	if cursor == 0 {
+		itemIdx = 0
 	} else {
-
-		insertAt = index + 1
-
-		// Insert into slice
-		m.prj.items = append(m.prj.items, item{})
-		copy(m.prj.items[insertAt+1:], m.prj.items[insertAt:])
-		m.prj.items[insertAt] = newItem
+		itemIdx = cursor // cursor 1 -> after items[0], etc.
 	}
 
-	m.cursor = insertAt
+	if len(m.prj.items) < 1 {
+		m.prj.items = []item{newItem}
+		itemIdx = 0
+	} else {
+		m.prj.items = append(m.prj.items, item{})
+		copy(m.prj.items[itemIdx+1:], m.prj.items[itemIdx:])
+		m.prj.items[itemIdx] = newItem
+	}
+
+	m.cursor = itemIdx + 1 // convert back to cursor-space
 	m.mode = editingTitle
 	m.input.SetValue("")
 	m.input.Focus()
@@ -77,6 +91,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.mode {
 	// SECTION: Title Editing Mode
 	case editingTitle:
+		idx := m.itemIndex()
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -84,15 +99,15 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = normal
 				m.input.Blur()
 				// If title is empty, remove the item
-				if m.prj.items[m.cursor].title == "" {
-					m.prj.items = append(m.prj.items[:m.cursor], m.prj.items[m.cursor+1:]...)
-					if m.cursor > 0 && m.cursor >= len(m.prj.items) {
+				if m.prj.items[idx].title == "" {
+					m.prj.items = append(m.prj.items[:idx], m.prj.items[idx+1:]...)
+					if idx >= len(m.prj.items) && m.cursor > 1 {
 						m.cursor--
 					}
 				}
 				return m, nil
 			case "enter":
-				m.prj.items[m.cursor].title = m.input.Value()
+				m.prj.items[idx].title = m.input.Value()
 				m.mode = normal
 				m.input.Blur()
 				err := m.prj.save()
@@ -106,18 +121,22 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Forward to text input
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
-		m.prj.items[m.cursor].title = m.input.Value()
+		m.prj.items[idx].title = m.input.Value()
 		return m, cmd
 
 	// SECTION: Confirming Deletion Mode
 	case confirmingDeletion:
+		idx := m.itemIndex()
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "y":
-				m.prj.items = append(m.prj.items[:m.cursor], m.prj.items[m.cursor+1:]...)
-				if m.cursor >= len(m.prj.items) && m.cursor > 0 {
-					m.cursor--
+				m.prj.items = append(m.prj.items[:idx], m.prj.items[idx+1:]...)
+				if m.cursor > len(m.prj.items) {
+					m.cursor = max(1, len(m.prj.items))
+				}
+				if len(m.prj.items) == 0 {
+					m.cursor = 0
 				}
 				m.mode = normal
 				m.prj.save()
@@ -130,6 +149,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// SECTION: Normal input mode
 	case normal:
+		maxCursor := len(m.prj.items) // 0=meta, 1..N=items
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch keypress := msg.String(); keypress {
@@ -138,36 +158,42 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 				}
 			case "down", "j":
-				if m.cursor < len(m.prj.items)-1 {
+				if m.cursor < maxCursor {
 					m.cursor++
 				}
 			case "a":
 				cmd := m.addNewAt(m.cursor)
 				return m, cmd
 			case "d":
-				if len(m.prj.items) > 0 {
+				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
 				}
 			case "shift+up", "K":
-				if m.cursor > 0 {
-					m.prj.items[m.cursor], m.prj.items[m.cursor-1] = m.prj.items[m.cursor-1], m.prj.items[m.cursor]
+				idx := m.itemIndex()
+				if !m.onMeta() && idx > 0 {
+					m.prj.items[idx], m.prj.items[idx-1] = m.prj.items[idx-1], m.prj.items[idx]
 					m.cursor--
 					m.prj.save()
 				}
 			case "shift+down", "J":
-				if m.cursor < len(m.prj.items)-1 {
-					m.prj.items[m.cursor], m.prj.items[m.cursor+1] = m.prj.items[m.cursor+1], m.prj.items[m.cursor]
+				idx := m.itemIndex()
+				if !m.onMeta() && idx < len(m.prj.items)-1 {
+					m.prj.items[idx], m.prj.items[idx+1] = m.prj.items[idx+1], m.prj.items[idx]
 					m.cursor++
 					m.prj.save()
 				}
 			case "shift+left", "H":
-				if m.prj.items[m.cursor].duration > 1 {
-					m.prj.items[m.cursor].duration--
+				idx := m.itemIndex()
+				if !m.onMeta() && m.prj.items[idx].duration > 1 {
+					m.prj.items[idx].duration--
 					m.prj.save()
 				}
 			case "shift+right", "L":
-				m.prj.items[m.cursor].duration++
-				m.prj.save()
+				if !m.onMeta() {
+					idx := m.itemIndex()
+					m.prj.items[idx].duration++
+					m.prj.save()
+				}
 			case "esc", "ctrl+c":
 				return m, tea.Quit
 			}
@@ -181,32 +207,47 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m plannerViewModel) View() string {
 
-	// If there's nothin' we can bail early:
-	if len(m.prj.items) == 0 {
-		dimStyle := lipgloss.NewStyle().Foreground(dimColor)
-		return dimStyle.Render("There are no items in this plan. Press 'a' to add one.") + "\n"
-	}
-
-	// Otherwise, find the Monday of the current week
-	now := time.Now()
-	weekday := now.Weekday()
-	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
-	monday := now.AddDate(0, 0, -daysUntilMonday)
-
 	// Set up the local styles for this view
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
 
-	// Generate the lines for the whole project first
+	// Use the project start date as the base Monday
+	startDate := m.prj.startDate
+	weekday := startDate.Weekday()
+	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
+	monday := startDate.AddDate(0, 0, -daysUntilMonday)
+
+	// Generate the lines for the whole project first.
+	const metaHeight = 2
 	var lines []string
 	cursorRow := 0
 	row := 0
+
+	// Meta item: project start date (2 rows)
+	{
+		style := normalStyle
+		if m.onMeta() {
+			style = selectedStyle
+			cursorRow = 0
+		}
+		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
+		lines = append(lines, style.Render(label))
+		lines = append(lines, style.Render(""))
+	}
+
+	// If there are no items, show a hint
+	if len(m.prj.items) == 0 {
+		dimStyle := lipgloss.NewStyle().Foreground(dimColor)
+		lines = append(lines, dimStyle.Render("There are no items in this plan. Press 'a' to add one."))
+		return strings.Join(lines, "\n") + "\n"
+	}
+
 	for i, it := range m.prj.items {
 		style := normalStyle
-		if i == m.cursor {
+		if i == m.itemIndex() {
 			style = selectedStyle
-			cursorRow = row
+			cursorRow = row + metaHeight
 		}
 		for w := range it.duration {
 
@@ -222,10 +263,10 @@ func (m plannerViewModel) View() string {
 			line := fmt.Sprintf("W%-3d %-5s ", week, date)
 
 			if w == 0 {
-				if m.mode == editingTitle && i == m.cursor {
+				if m.mode == editingTitle && i == m.itemIndex() {
 					// IF EDITING: Show input.
 					line += "-" + m.input.View()
-				} else if m.mode == confirmingDeletion && i == m.cursor {
+				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
 					line += "⬤  " + deleteStyle.Render("Delete? y/n")
 				} else {
