@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type subtask struct {
@@ -21,16 +22,85 @@ type item struct {
 
 type project struct {
 	filePath     string
+	name         string
+	startDate    time.Time // zero value means unset
 	items        []item
 	usesTimeline bool
+}
+
+// Using the Go date formatting paradigm
+const dateFormat = "Jan 2 2006"
+
+func readDate(s string) (time.Time, error) {
+	return time.Parse(dateFormat, s)
+}
+
+func writeDate(t time.Time) string {
+	return t.Format(dateFormat)
+}
+
+// parseCodeBlock extracts key-value pairs from a fenced code block.
+// Returns the map and the number of lines consumed (0 if no block found).
+func parseCodeBlock(lines []string) (map[string]string, int) {
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "```" {
+		return nil, 0
+	}
+	m := make(map[string]string)
+	for i := 1; i < len(lines); i++ {
+		line := lines[i]
+		if strings.TrimSpace(line) == "```" {
+			return m, i + 1
+		}
+		if k, v, ok := strings.Cut(line, ":"); ok {
+			m[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	// Unterminated block — ignore it
+	return nil, 0
+}
+
+// writeCodeBlock serializes a map into a fenced code block string.
+// Keys are written in the order provided.
+func writeCodeBlock(keys []string, m map[string]string) string {
+	var b strings.Builder
+	b.WriteString("```\n")
+	for _, k := range keys {
+		if v, ok := m[k]; ok {
+			b.WriteString(k + ": " + v + "\n")
+		}
+	}
+	b.WriteString("```\n")
+	return b.String()
 }
 
 // Matches e.g. `abcd (1)` -> `(1)`
 var durationRe = regexp.MustCompile(`\((\d+)\)\s*$`)
 
-// Parses a project.md file into useable data
-func parseItems(content string) []item {
+// parseProject parses the full file content into a project's metadata and items.
+func parseProject(content string, prj *project) {
 	lines := strings.Split(content, "\n")
+
+	// Check for a leading code block with project metadata
+	if meta, consumed := parseCodeBlock(lines); consumed > 0 {
+		if v, ok := meta["Project Name"]; ok {
+			prj.name = v
+		}
+		if v, ok := meta["Project Start"]; ok {
+			if t, err := readDate(v); err == nil {
+				prj.startDate = t
+			}
+		}
+
+		// If there was a code block, use that as the cursor and parse items out of the rest of it
+		lines = lines[consumed:]
+	}
+
+	// Now do the individual item parsing
+	prj.items = parseItems(lines)
+}
+
+// Parses item lines into useable data
+func parseItems(lines []string) []item {
 	var items []item
 	var cur *item // currently processing this item
 
@@ -114,6 +184,26 @@ func parseItems(content string) []item {
 func saveProject(p project) error {
 	var b strings.Builder
 
+	// Write project metadata code block if any values are set
+	if p.name != "" || !p.startDate.IsZero() {
+		meta := make(map[string]string)
+		var keys []string
+
+		// Project name
+		if p.name != "" {
+			keys = append(keys, "Project Name")
+			meta["Project Name"] = p.name
+		}
+
+		// Project start date
+		if !p.startDate.IsZero() {
+			keys = append(keys, "Project Start")
+			meta["Project Start"] = writeDate(p.startDate)
+		}
+		b.WriteString(writeCodeBlock(keys, meta))
+		b.WriteString("\n")
+	}
+
 	for i, it := range p.items {
 		if i > 0 {
 			b.WriteString("\n")
@@ -158,8 +248,8 @@ func loadProject(fp string) (*project, error) {
 		return nil, err
 	}
 
-	items := parseItems(string(data))
-	prj := project{filePath: fp, items: items, usesTimeline: true}
+	prj := project{filePath: fp, usesTimeline: true}
+	parseProject(string(data), &prj)
 
 	return &prj, nil
 }
