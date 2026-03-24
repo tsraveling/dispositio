@@ -86,7 +86,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// SECTION: Primary input
+	// SECTION: Normal input
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -102,6 +102,14 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			cmd := m.addNewAt(m.cursor)
 			return m, cmd
+		case "shift+left", "H":
+			if m.prj.items[m.cursor].duration > 1 {
+				m.prj.items[m.cursor].duration--
+				m.prj.save()
+			}
+		case "shift+right", "L":
+			m.prj.items[m.cursor].duration++
+			m.prj.save()
 		case "esc", "ctrl+c":
 			return m, tea.Quit
 		}
