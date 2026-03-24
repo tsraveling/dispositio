@@ -1,6 +1,6 @@
 ```
 Project Name: Dispositio
-Project Start: Mar 18 2026
+Project Start: Mar 10 2026
 ```
 
 # First item (6)

@@ -36,6 +36,12 @@ func (m *plannerViewModel) onMeta() bool {
 	return m.cursor == 0
 }
 
+// isHoveringMeta returns true if the cursor is currently over the meta item
+// and we're in normal mode (i.e. meta controls should be shown/active).
+func (m *plannerViewModel) isHoveringMeta() bool {
+	return m.cursor == 0 && m.mode == normal
+}
+
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti := textinput.New()
 	ti.Placeholder = "Item title..."
@@ -182,14 +188,32 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor++
 					m.prj.save()
 				}
-			case "shift+left", "H":
-				idx := m.itemIndex()
-				if !m.onMeta() && m.prj.items[idx].duration > 1 {
-					m.prj.items[idx].duration--
+			case "left", "h":
+				if m.isHoveringMeta() {
+					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -1)
 					m.prj.save()
 				}
+			case "right", "l":
+				if m.isHoveringMeta() {
+					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 1)
+					m.prj.save()
+				}
+			case "shift+left", "H":
+				if m.isHoveringMeta() {
+					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -7)
+					m.prj.save()
+				} else if !m.onMeta() {
+					idx := m.itemIndex()
+					if m.prj.items[idx].duration > 1 {
+						m.prj.items[idx].duration--
+						m.prj.save()
+					}
+				}
 			case "shift+right", "L":
-				if !m.onMeta() {
+				if m.isHoveringMeta() {
+					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 7)
+					m.prj.save()
+				} else if !m.onMeta() {
 					idx := m.itemIndex()
 					m.prj.items[idx].duration++
 					m.prj.save()
@@ -233,7 +257,12 @@ func (m plannerViewModel) View() string {
 		}
 		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
 		lines = append(lines, style.Render(label))
-		lines = append(lines, style.Render(""))
+		if m.isHoveringMeta() {
+			dimStyle := lipgloss.NewStyle().Foreground(dimColor)
+			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))
+		} else {
+			lines = append(lines, style.Render(""))
+		}
 	}
 
 	// If there are no items, show a hint
