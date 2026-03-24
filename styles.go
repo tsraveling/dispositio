@@ -16,6 +16,7 @@ var (
 	secondaryColor     = lipgloss.Color("174") // light gray
 	textColor          = lipgloss.Color("254") // white
 	highlightColor     = lipgloss.Color("226")
+	dimColor           = lipgloss.Color("243")     // dim gray
 	gradientColorLeft  = lipgloss.Color("#7b2d8b") // dusky purple
 	gradientColorRight = lipgloss.Color("#2d8b4e") // dark mossy green
 	errorColor         = lipgloss.Color("#cc4444") // medium red

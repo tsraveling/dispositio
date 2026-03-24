@@ -100,6 +100,25 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prj.items[m.cursor].title = m.input.Value()
 		return m, cmd
 
+	// SECTION: Confirming Deletion Mode
+	case confirmingDeletion:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y":
+				m.prj.items = append(m.prj.items[:m.cursor], m.prj.items[m.cursor+1:]...)
+				if m.cursor >= len(m.prj.items) && m.cursor > 0 {
+					m.cursor--
+				}
+				m.mode = normal
+				m.prj.save()
+				return m, nil
+			case "n", "esc":
+				m.mode = normal
+				return m, nil
+			}
+		}
+
 	// SECTION: Normal input mode
 	case normal:
 		switch msg := msg.(type) {
@@ -116,6 +135,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "a":
 				cmd := m.addNewAt(m.cursor)
 				return m, cmd
+			case "d":
+				if len(m.prj.items) > 0 {
+					m.mode = confirmingDeletion
+				}
 			case "shift+up", "K":
 				if m.cursor > 0 {
 					m.prj.items[m.cursor], m.prj.items[m.cursor-1] = m.prj.items[m.cursor-1], m.prj.items[m.cursor]
@@ -148,15 +171,23 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // SECTION: Rendering
 
 func (m plannerViewModel) View() string {
-	now := time.Now()
 
-	// Find the Monday of the current week
+	// If there's nothin' we can bail early:
+	if len(m.prj.items) == 0 {
+		dimStyle := lipgloss.NewStyle().Foreground(dimColor)
+		return dimStyle.Render("There are no items in this plan. Press 'a' to add one.") + "\n"
+	}
+
+	// Otherwise, find the Monday of the current week
+	now := time.Now()
 	weekday := now.Weekday()
 	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
 	monday := now.AddDate(0, 0, -daysUntilMonday)
 
+	// Set up the local styles for this view
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
+	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
 
 	// Generate the lines for the whole project first
 	var lines []string
@@ -169,15 +200,27 @@ func (m plannerViewModel) View() string {
 			cursorRow = row
 		}
 		for w := range it.duration {
+
+			// Get the date of the first monday, and the week of the year
+			// TODO: Add start of week day to config.ini
 			weekStart := monday.AddDate(0, 0, row*7)
 			_, week := weekStart.ISOWeek()
+
+			// Assemble the date, MM.DD
+			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
 
 			line := fmt.Sprintf("W%-3d %-5s ", week, date)
+
 			if w == 0 {
 				if m.mode == editingTitle && i == m.cursor {
+					// IF EDITING: Show input.
 					line += "-" + m.input.View()
+				} else if m.mode == confirmingDeletion && i == m.cursor {
+					// IF DELETING: Show confirmation.
+					line += "⬤  " + deleteStyle.Render("Delete? y/n")
 				} else {
+					// Otherwise just show the normal title.
 					line += "⬤  " + it.title
 				}
 			} else {
