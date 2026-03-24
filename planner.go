@@ -49,6 +49,13 @@ func (m *plannerViewModel) addNewAt(index int) tea.Cmd {
 }
 
 func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		cfg.updateWW(msg.Width)
+		cfg.updateWH(msg.Height)
+	default:
+		_ = msg
+	}
 
 	// SECTION: Editing input
 

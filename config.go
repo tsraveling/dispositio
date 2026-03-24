@@ -13,8 +13,9 @@ type config struct {
 	// Config file
 	someValue string
 
-	// Window width
+	// Window dimensions
 	ww int
+	wh int
 }
 
 func (c *config) fullWidth() int {
@@ -24,6 +25,10 @@ func (c *config) fullWidth() int {
 // TODO: Make these configurable
 func (c *config) updateWW(ww int) {
 	c.ww = max(30, min(ww, 80))
+}
+
+func (c *config) updateWH(wh int) {
+	c.wh = max(10, wh)
 }
 
 var cfg config
