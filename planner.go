@@ -10,11 +10,19 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type plannerMode int
+
+const (
+	normal plannerMode = iota
+	editingTitle
+	confirmingDeletion
+)
+
 type plannerViewModel struct {
-	prj          project
-	cursor       int  // selected item index
-	editingTitle bool // true if we are in edit title mode
-	input        textinput.Model
+	prj    project
+	cursor int // selected item index
+	mode   plannerMode
+	input  textinput.Model
 }
 
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
@@ -23,7 +31,7 @@ func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti.CharLimit = 120
 
 	// Copy project into value mode so we can mutate it bubbletea-style
-	m := plannerViewModel{prj: *p, input: ti}
+	m := plannerViewModel{prj: *p, input: ti, mode: normal}
 	return m, m.Init()
 }
 
@@ -42,7 +50,7 @@ func (m *plannerViewModel) addNewAt(index int) tea.Cmd {
 	m.prj.items[insertAt] = newItem
 
 	m.cursor = insertAt
-	m.editingTitle = true
+	m.mode = editingTitle
 	m.input.SetValue("")
 	m.input.Focus()
 	return textinput.Blink
@@ -57,14 +65,14 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = msg
 	}
 
-	// SECTION: Editing input
-
-	if m.editingTitle {
+	switch m.mode {
+	// SECTION: Title Editing Mode
+	case editingTitle:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc":
-				m.editingTitle = false
+				m.mode = normal
 				m.input.Blur()
 				// If title is empty, remove the item
 				if m.prj.items[m.cursor].title == "" {
@@ -76,7 +84,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "enter":
 				m.prj.items[m.cursor].title = m.input.Value()
-				m.editingTitle = false
+				m.mode = normal
 				m.input.Blur()
 				err := m.prj.save()
 				if err != nil {
@@ -91,46 +99,46 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.input, cmd = m.input.Update(msg)
 		m.prj.items[m.cursor].title = m.input.Value()
 		return m, cmd
-	}
 
-	// SECTION: Normal input
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.prj.items)-1 {
-				m.cursor++
-			}
-		case "a":
-			cmd := m.addNewAt(m.cursor)
-			return m, cmd
-		case "shift+up", "K":
-			if m.cursor > 0 {
-				m.prj.items[m.cursor], m.prj.items[m.cursor-1] = m.prj.items[m.cursor-1], m.prj.items[m.cursor]
-				m.cursor--
+	// SECTION: Normal input mode
+	case normal:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch keypress := msg.String(); keypress {
+			case "up", "k":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "down", "j":
+				if m.cursor < len(m.prj.items)-1 {
+					m.cursor++
+				}
+			case "a":
+				cmd := m.addNewAt(m.cursor)
+				return m, cmd
+			case "shift+up", "K":
+				if m.cursor > 0 {
+					m.prj.items[m.cursor], m.prj.items[m.cursor-1] = m.prj.items[m.cursor-1], m.prj.items[m.cursor]
+					m.cursor--
+					m.prj.save()
+				}
+			case "shift+down", "J":
+				if m.cursor < len(m.prj.items)-1 {
+					m.prj.items[m.cursor], m.prj.items[m.cursor+1] = m.prj.items[m.cursor+1], m.prj.items[m.cursor]
+					m.cursor++
+					m.prj.save()
+				}
+			case "shift+left", "H":
+				if m.prj.items[m.cursor].duration > 1 {
+					m.prj.items[m.cursor].duration--
+					m.prj.save()
+				}
+			case "shift+right", "L":
+				m.prj.items[m.cursor].duration++
 				m.prj.save()
+			case "esc", "ctrl+c":
+				return m, tea.Quit
 			}
-		case "shift+down", "J":
-			if m.cursor < len(m.prj.items)-1 {
-				m.prj.items[m.cursor], m.prj.items[m.cursor+1] = m.prj.items[m.cursor+1], m.prj.items[m.cursor]
-				m.cursor++
-				m.prj.save()
-			}
-		case "shift+left", "H":
-			if m.prj.items[m.cursor].duration > 1 {
-				m.prj.items[m.cursor].duration--
-				m.prj.save()
-			}
-		case "shift+right", "L":
-			m.prj.items[m.cursor].duration++
-			m.prj.save()
-		case "esc", "ctrl+c":
-			return m, tea.Quit
 		}
 	}
 
@@ -150,12 +158,15 @@ func (m plannerViewModel) View() string {
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 
-	var sb strings.Builder
+	// Generate the lines for the whole project first
+	var lines []string
+	cursorRow := 0
 	row := 0
 	for i, it := range m.prj.items {
 		style := normalStyle
 		if i == m.cursor {
 			style = selectedStyle
+			cursorRow = row
 		}
 		for w := range it.duration {
 			weekStart := monday.AddDate(0, 0, row*7)
@@ -164,7 +175,7 @@ func (m plannerViewModel) View() string {
 
 			line := fmt.Sprintf("W%-3d %-5s ", week, date)
 			if w == 0 {
-				if m.editingTitle && i == m.cursor {
+				if m.mode == editingTitle && i == m.cursor {
 					line += "-" + m.input.View()
 				} else {
 					line += "⬤  " + it.title
@@ -173,9 +184,23 @@ func (m plannerViewModel) View() string {
 				line += "⚬"
 			}
 
-			sb.WriteString(style.Render(line) + "\n")
+			lines = append(lines, style.Render(line))
 			row++
 		}
 	}
-	return sb.String()
+
+	// Grab only the chunk of them that are currently visible in the viewport,
+	// and then just display that.
+	viewHeight := cfg.wh
+	if viewHeight > 0 && len(lines) > viewHeight {
+		start := max(cursorRow-viewHeight/2, 0)
+		end := start + viewHeight
+		if end > len(lines) {
+			end = len(lines)
+			start = end - viewHeight
+		}
+		lines = lines[start:end]
+	}
+
+	return strings.Join(lines, "\n") + "\n"
 }
