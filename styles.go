@@ -15,6 +15,7 @@ var (
 	primaryColor       = lipgloss.Color("206")
 	secondaryColor     = lipgloss.Color("174") // light gray
 	textColor          = lipgloss.Color("254") // white
+	fadeColor          = lipgloss.Color("250") // slightly dimmer white
 	highlightColor     = lipgloss.Color("226")
 	dimColor           = lipgloss.Color("243")     // dim gray
 	gradientColorLeft  = lipgloss.Color("#7b2d8b") // dusky purple
@@ -23,6 +24,7 @@ var (
 	warningColor       = lipgloss.Color("#ccaa22") // yellow
 	logColor           = lipgloss.Color("#888888") // medium gray
 
+	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
 	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
 	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
 )

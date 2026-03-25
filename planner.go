@@ -234,6 +234,7 @@ func (m plannerViewModel) View() string {
 	// Set up the local styles for this view
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
+	fadeStyle := lipgloss.NewStyle().Foreground(fadeColor)
 	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
 
 	// Use the project start date as the base Monday
@@ -258,7 +259,6 @@ func (m plannerViewModel) View() string {
 		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
 		lines = append(lines, style.Render(label))
 		if m.isHoveringMeta() {
-			dimStyle := lipgloss.NewStyle().Foreground(dimColor)
 			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))
 		} else {
 			lines = append(lines, style.Render(""))
@@ -267,15 +267,16 @@ func (m plannerViewModel) View() string {
 
 	// If there are no items, show a hint
 	if len(m.prj.items) == 0 {
-		dimStyle := lipgloss.NewStyle().Foreground(dimColor)
 		lines = append(lines, dimStyle.Render("There are no items in this plan. Press 'a' to add one."))
 		return strings.Join(lines, "\n") + "\n"
 	}
 
 	for i, it := range m.prj.items {
-		style := normalStyle
+		rightStyle := normalStyle
+		leftStyle := fadeStyle
 		if i == m.itemIndex() {
-			style = selectedStyle
+			rightStyle = selectedStyle
+			leftStyle = normalStyle
 			cursorRow = row + metaHeight
 		}
 		for w := range it.duration {
@@ -289,24 +290,26 @@ func (m plannerViewModel) View() string {
 			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
 
-			line := fmt.Sprintf("W%-3d %-5s ", week, date)
+			leftSide := fmt.Sprintf("W%-3d %-5s ", week, date)
+			var rightSide string
 
 			if w == 0 {
 				if m.mode == editingTitle && i == m.itemIndex() {
 					// IF EDITING: Show input.
-					line += "-" + m.input.View()
+					rightSide = "-" + m.input.View()
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
-					line += "⬤  " + deleteStyle.Render("Delete? y/n")
+					rightSide = "⬤  " + deleteStyle.Render("Delete? y/n")
 				} else {
 					// Otherwise just show the normal title.
-					line += "⬤  " + it.title
+					rightSide = "⬤  " + it.title
 				}
 			} else {
-				line += "⚬"
+				rightSide += "⚬"
 			}
+			line := leftStyle.Render(leftSide) + rightStyle.Render(rightSide)
 
-			lines = append(lines, style.Render(line))
+			lines = append(lines, line)
 			row++
 		}
 	}
