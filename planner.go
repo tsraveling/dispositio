@@ -42,6 +42,28 @@ func (m *plannerViewModel) isHoveringMeta() bool {
 	return m.cursor == 0 && m.mode == normal
 }
 
+// itemIndexForDate returns the item index (into prj.items) whose week range
+// contains the given date, or -1 if no item covers that date.
+func (m *plannerViewModel) itemIndexForDate(t time.Time) int {
+	startDate := m.prj.startDate
+	weekday := startDate.Weekday()
+	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
+	monday := startDate.AddDate(0, 0, -daysUntilMonday)
+	tYear, tWeek := t.ISOWeek()
+	row := 0
+	for i, it := range m.prj.items {
+		for range it.duration {
+			ws := monday.AddDate(0, 0, row*7)
+			wsYear, wsWeek := ws.ISOWeek()
+			if wsYear == tYear && wsWeek == tWeek {
+				return i
+			}
+			row++
+		}
+	}
+	return -1
+}
+
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti := textinput.New()
 	ti.Placeholder = "Item title..."
@@ -49,6 +71,12 @@ func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 
 	// Copy project into value mode so we can mutate it bubbletea-style
 	m := plannerViewModel{prj: *p, input: ti, mode: normal}
+
+	// Start cursor on the item that contains the current week
+	if idx := m.itemIndexForDate(time.Now()); idx >= 0 {
+		m.cursor = idx + 1 // cursor-space: 0=meta, 1+=items
+	}
+
 	return m, m.Init()
 }
 
@@ -236,6 +264,7 @@ func (m plannerViewModel) View() string {
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 	fadeStyle := lipgloss.NewStyle().Foreground(fadeColor)
 	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+	nowYear, nowWeek := time.Now().ISOWeek()
 
 	// Use the project start date as the base Monday
 	startDate := m.prj.startDate
@@ -272,11 +301,7 @@ func (m plannerViewModel) View() string {
 	}
 
 	for i, it := range m.prj.items {
-		rightStyle := normalStyle
-		leftStyle := fadeStyle
 		if i == m.itemIndex() {
-			rightStyle = selectedStyle
-			leftStyle = normalStyle
 			cursorRow = row + metaHeight
 		}
 		for w := range it.duration {
@@ -284,13 +309,23 @@ func (m plannerViewModel) View() string {
 			// Get the date of the first monday, and the week of the year
 			// TODO: Add start of week day to config.ini
 			weekStart := monday.AddDate(0, 0, row*7)
-			_, week := weekStart.ISOWeek()
+			wsYear, week := weekStart.ISOWeek()
 
 			// Assemble the date, MM.DD
 			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
 
 			leftSide := fmt.Sprintf("W%-3d %-5s ", week, date)
+
+			rightStyle := normalStyle
+			leftStyle := fadeStyle
+			if i == m.itemIndex() {
+				rightStyle = selectedStyle
+				leftStyle = normalStyle
+			}
+			if wsYear == nowYear && week == nowWeek {
+				leftStyle = highlightedStyle
+			}
 			var rightSide string
 
 			if w == 0 {
