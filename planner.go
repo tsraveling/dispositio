@@ -333,13 +333,13 @@ func (m plannerViewModel) View() string {
 			}
 			var rightSide string
 
-			// Symbols show item status
+			// Symbols: ✓ done, ⬤ first non-done after done, ◯ pending
 			symbol := "◯"
-			if it.status() == inProgress {
-				symbol = "⬤"
-			} else if it.status() == done {
+			if !it.finished.IsZero() {
 				symbol = "✓"
 				rightStyle = rightStyle.Italic(true)
+			} else if i == 0 || !m.prj.items[i-1].finished.IsZero() {
+				symbol = "⬤"
 			}
 
 			if w == 0 {

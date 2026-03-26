@@ -9,14 +9,6 @@ import (
 	"time"
 )
 
-type itemStatus int
-
-const (
-	pending itemStatus = iota
-	inProgress
-	done
-)
-
 type subtask struct {
 	title       string
 	description string
@@ -27,33 +19,17 @@ type item struct {
 	duration    int // in weeks
 	description string
 	subtasks    []subtask
-	started     time.Time
-	finished    time.Time
+	finished time.Time
 }
 
-// dateString returns a parenthesized date range like "(3.1-3.15)" or "(3.1-)", or "" if no dates.
+// dateString returns e.g. "(3.14)" for a completed item, or "" if not finished.
 func (i *item) dateString() string {
-	if i.started.IsZero() {
+	if i.finished.IsZero() {
 		return ""
 	}
-	s := fmt.Sprintf("%d.%d", int(i.started.Month()), i.started.Day())
-	if !i.finished.IsZero() {
-		f := fmt.Sprintf("%d.%d", int(i.finished.Month()), i.finished.Day())
-		return "(" + s + "-" + f + ")"
-	}
-	return "(" + s + "-)"
+	return fmt.Sprintf("(%d.%d)", int(i.finished.Month()), i.finished.Day())
 }
 
-// Returns pending, inProgress, or done, depending on which dates are present on the object.
-func (i *item) status() itemStatus {
-	if i.started.IsZero() {
-		return pending
-	}
-	if i.finished.IsZero() {
-		return inProgress
-	}
-	return done
-}
 
 type project struct {
 	filePath     string
@@ -159,14 +135,9 @@ func parseItems(lines []string) []item {
 
 			cur = &item{title: title, duration: duration}
 
-			// Check for item metadata code block (Started / Finished dates)
+			// Check for item metadata code block (Finished date)
 			if i+1 < len(lines) {
 				if meta, consumed := parseCodeBlock(lines[i+1:]); consumed > 0 {
-					if v, ok := meta["Started"]; ok {
-						if t, err := readDate(v); err == nil {
-							cur.started = t
-						}
-					}
 					if v, ok := meta["Finished"]; ok {
 						if t, err := readDate(v); err == nil {
 							cur.finished = t
@@ -268,19 +239,10 @@ func saveProject(p project) error {
 			b.WriteString("# " + it.title + "\n")
 		}
 
-		// Item metadata code block (only if any dates are set)
-		if !it.started.IsZero() || !it.finished.IsZero() {
-			meta := make(map[string]string)
-			var keys []string
-			if !it.started.IsZero() {
-				keys = append(keys, "Started")
-				meta["Started"] = writeDate(it.started)
-			}
-			if !it.finished.IsZero() {
-				keys = append(keys, "Finished")
-				meta["Finished"] = writeDate(it.finished)
-			}
-			b.WriteString(writeCodeBlock(keys, meta))
+		// Item metadata code block (only if finished)
+		if !it.finished.IsZero() {
+			meta := map[string]string{"Finished": writeDate(it.finished)}
+			b.WriteString(writeCodeBlock([]string{"Finished"}, meta))
 		}
 
 		// Description
