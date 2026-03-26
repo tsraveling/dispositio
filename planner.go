@@ -328,16 +328,25 @@ func (m plannerViewModel) View() string {
 			}
 			var rightSide string
 
+			// Symbols show item status
+			symbol := "◯"
+			if it.status() == inProgress {
+				symbol = "⬤"
+			} else if it.status() == done {
+				symbol = "✓"
+				rightStyle = rightStyle.Italic(true)
+			}
+
 			if w == 0 {
 				if m.mode == editingTitle && i == m.itemIndex() {
 					// IF EDITING: Show input.
 					rightSide = "-" + m.input.View()
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
-					rightSide = "⬤  " + deleteStyle.Render("Delete? y/n")
+					rightSide = symbol + "  " + deleteStyle.Render("Delete? y/n")
 				} else {
 					// Otherwise just show the normal title.
-					rightSide = "⬤  " + it.title
+					rightSide = symbol + "  " + it.title
 				}
 			} else {
 				rightSide += "⚬"
