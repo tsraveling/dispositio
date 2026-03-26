@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -28,6 +29,19 @@ type item struct {
 	subtasks    []subtask
 	started     time.Time
 	finished    time.Time
+}
+
+// dateString returns a parenthesized date range like "(3.1-3.15)" or "(3.1-)", or "" if no dates.
+func (i *item) dateString() string {
+	if i.started.IsZero() {
+		return ""
+	}
+	s := fmt.Sprintf("%d.%d", int(i.started.Month()), i.started.Day())
+	if !i.finished.IsZero() {
+		f := fmt.Sprintf("%d.%d", int(i.finished.Month()), i.finished.Day())
+		return "(" + s + "-" + f + ")"
+	}
+	return "(" + s + "-)"
 }
 
 // Returns pending, inProgress, or done, depending on which dates are present on the object.

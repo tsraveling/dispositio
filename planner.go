@@ -311,6 +311,11 @@ func (m plannerViewModel) View() string {
 			weekStart := monday.AddDate(0, 0, row*7)
 			wsYear, week := weekStart.ISOWeek()
 
+			// If item is finished, stop after the week it was completed
+			if !it.finished.IsZero() && weekStart.After(it.finished) {
+				break
+			}
+
 			// Assemble the date, MM.DD
 			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
@@ -340,18 +345,22 @@ func (m plannerViewModel) View() string {
 			if w == 0 {
 				if m.mode == editingTitle && i == m.itemIndex() {
 					// IF EDITING: Show input.
-					rightSide = "-" + m.input.View()
+					rightSide = rightStyle.Render("-") + m.input.View()
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
-					rightSide = symbol + "  " + deleteStyle.Render("Delete? y/n")
+					rightSide = rightStyle.Render(symbol+"  ") + deleteStyle.Render("Delete? y/n")
 				} else {
 					// Otherwise just show the normal title.
-					rightSide = symbol + "  " + it.title
+					dateStr := ""
+					if ds := it.dateString(); ds != "" {
+						dateStr = " " + dimStyle.Render(ds)
+					}
+					rightSide = rightStyle.Render(symbol+"  "+it.title) + dateStr
 				}
 			} else {
-				rightSide += "⚬"
+				rightSide = rightStyle.Render("⚬")
 			}
-			line := leftStyle.Render(leftSide) + rightStyle.Render(rightSide)
+			line := leftStyle.Render(leftSide) + rightSide
 
 			lines = append(lines, line)
 			row++

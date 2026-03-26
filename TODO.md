@@ -1,6 +1,6 @@
 # Dispositio TODO
 
-- [ ] Add basic metadata to items:
+- [x] Add basic metadata to items:
     - Status: pending, in progress, done
     - Start date
     - Finish date
