@@ -86,10 +86,17 @@ func (m plannerViewModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *plannerViewModel) detailPanelWidth() int {
+	if cfg.ww >= minSideBySideWidth {
+		return cfg.ww - cfg.ww/2
+	}
+	return cfg.ww
+}
+
 func (m *plannerViewModel) gotoDetail() {
 	if !m.onMeta() {
 		idx := m.itemIndex()
-		dvm := makeDetailViewModel(&m.prj.items[idx])
+		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth())
 		m.detail = &dvm
 	}
 }
@@ -128,13 +135,20 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		cfg.updateWW(msg.Width)
 		cfg.updateWH(msg.Height)
+		if m.detail != nil {
+			m.detail.panelWidth = m.detailPanelWidth()
+		}
 	default:
 		_ = msg
 	}
 
-	// Handle detail close message.
+	// Handle detail messages.
 	if _, ok := msg.(detailCloseMsg); ok {
 		m.detail = nil
+		return m, nil
+	}
+	if _, ok := msg.(detailSaveMsg); ok {
+		m.prj.save()
 		return m, nil
 	}
 
