@@ -19,10 +19,11 @@ const (
 )
 
 type plannerViewModel struct {
-	prj    project
-	cursor int // 0 = meta (start date), 1..N = items[0..N-1]
-	mode   plannerMode
-	input  textinput.Model
+	prj          project
+	cursor       int // 0 = meta (start date), 1..N = items[0..N-1]
+	mode         plannerMode
+	input        textinput.Model
+	currentModal modal
 }
 
 // itemIndex returns the index into prj.items for the current cursor,
@@ -122,6 +123,13 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = msg
 	}
 
+	// Route to active modal; always consumes input when present.
+	if m.currentModal != nil {
+		var cmd tea.Cmd
+		m.currentModal, cmd = modalUpdate(m.currentModal, msg)
+		return m, cmd
+	}
+
 	switch m.mode {
 	// SECTION: Title Editing Mode
 	case editingTitle:
@@ -201,6 +209,11 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "d":
 				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
+				}
+			case "M":
+				if !m.onMeta() {
+					m.currentModal = newCompleteItemModal(&m.prj.items[m.itemIndex()])
+					return m, nil
 				}
 			case "shift+up", "K":
 				idx := m.itemIndex()
@@ -380,5 +393,6 @@ func (m plannerViewModel) View() string {
 		lines = lines[start:end]
 	}
 
-	return strings.Join(lines, "\n") + "\n"
+	bg := strings.Join(lines, "\n") + "\n"
+	return modalView(m.currentModal, bg)
 }
