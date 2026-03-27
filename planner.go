@@ -22,6 +22,7 @@ type plannerViewModel struct {
 	prj          project
 	cursor       int // 0 = meta (start date), 1..N = items[0..N-1]
 	mode         plannerMode
+	detail       *detailViewModel
 	input        textinput.Model
 	currentModal modal
 }
@@ -85,6 +86,14 @@ func (m plannerViewModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *plannerViewModel) gotoDetail() {
+	if !m.onMeta() {
+		idx := m.itemIndex()
+		dvm := makeDetailViewModel(&m.prj.items[idx])
+		m.detail = &dvm
+	}
+}
+
 // addNewAt inserts a new empty item after the current cursor position and enters editing mode.
 // cursor is in cursor-space (0=meta, 1+=items).
 func (m *plannerViewModel) addNewAt(cursor int) tea.Cmd {
@@ -123,10 +132,23 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = msg
 	}
 
+	// Handle detail close message.
+	if _, ok := msg.(detailCloseMsg); ok {
+		m.detail = nil
+		return m, nil
+	}
+
 	// Route to active modal; always consumes input when present.
 	if m.currentModal != nil {
 		var cmd tea.Cmd
 		m.currentModal, cmd = modalUpdate(m.currentModal, msg)
+		return m, cmd
+	}
+
+	// Route to detail panel if active.
+	if m.detail != nil {
+		var cmd tea.Cmd
+		*m.detail, cmd = m.detail.Update(msg)
 		return m, cmd
 	}
 
@@ -234,10 +256,14 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -1)
 					m.prj.save()
 				}
+			case "enter":
+				m.gotoDetail()
 			case "right", "l":
 				if m.isHoveringMeta() {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 1)
 					m.prj.save()
+				} else if !m.onMeta() {
+					m.gotoDetail()
 				}
 			case "shift+left", "H":
 				if m.isHoveringMeta() {
@@ -270,7 +296,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // SECTION: Rendering
 
-func (m plannerViewModel) View() string {
+func (m plannerViewModel) plannerView() string {
 
 	// Set up the local styles for this view
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
@@ -393,6 +419,38 @@ func (m plannerViewModel) View() string {
 		lines = lines[start:end]
 	}
 
-	bg := strings.Join(lines, "\n") + "\n"
-	return modalView(m.currentModal, bg)
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func (m plannerViewModel) View() string {
+	plannerStr := m.plannerView()
+
+	if cfg.ww >= minSideBySideWidth {
+		// Panel mode: always show both panels
+		plannerWidth := cfg.ww / 2
+		detailWidth := cfg.ww - plannerWidth
+		plannerCol := lipgloss.NewStyle().Width(plannerWidth).Height(cfg.wh).Render(plannerStr)
+
+		var detailCol string
+		if m.detail != nil {
+			detailCol = m.detail.View(detailWidth, cfg.wh)
+		} else {
+			var it *item
+			if !m.onMeta() {
+				it = &m.prj.items[m.itemIndex()]
+			}
+			detailCol = detailViewInactive(it, detailWidth, cfg.wh)
+		}
+
+		combined := lipgloss.JoinHorizontal(lipgloss.Top, plannerCol, detailCol)
+		return modalView(m.currentModal, combined)
+	}
+
+	// Narrow mode: swap views
+	if m.detail != nil {
+		detailStr := m.detail.View(cfg.ww, cfg.wh)
+		return modalView(m.currentModal, detailStr)
+	}
+
+	return modalView(m.currentModal, plannerStr)
 }

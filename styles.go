@@ -27,7 +27,21 @@ var (
 	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
 	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
 	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
+	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(primaryColor)
 )
+
+func detailStyle(w, h int, active bool) lipgloss.Style {
+	borderColor := dimColor
+	if active {
+		borderColor = primaryColor
+	}
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		Padding(1, 2).
+		Width(w - 2).
+		Height(h - 2)
+}
 
 func boxWidth(termWidth int) int {
 	return min(termWidth, maxWidth)

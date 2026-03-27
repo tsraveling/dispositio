@@ -24,7 +24,7 @@ func (c *config) fullWidth() int {
 
 // TODO: Make these configurable
 func (c *config) updateWW(ww int) {
-	c.ww = max(30, min(ww, 80))
+	c.ww = max(30, ww)
 }
 
 func (c *config) updateWH(wh int) {
