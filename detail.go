@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -25,15 +28,40 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	return d, nil
 }
 
-func (d detailViewModel) View(w, h int) string {
-	title := titleStyle.Render(d.item.title)
-	return detailStyle(w, h, true).Render(title)
+func getBody(item *item, dv *detailViewModel) string {
+	title := titleStyle.Render(item.title)
+	desc := item.description
+	if len(desc) == 0 {
+		desc = dimStyle.Italic(true).Render("~ no description ~")
+	} else {
+		desc = fadeStyle.Render(desc)
+	}
+
+	// Do the tasks section
+	var b strings.Builder
+	for _, task := range item.subtasks {
+		prefix := primaryStyle.Render("- [ ] ")
+		if task.completed {
+			prefix = dimStyle.Render("- [x] ")
+		}
+		b.WriteString(prefix)
+		b.WriteString(task.title)
+		b.WriteString("\n")
+	}
+
+	// Put it all together
+	return fmt.Sprintf("%s\n\n%s\n\n%s", title, desc, b.String())
+}
+
+func (d *detailViewModel) View(w, h int) string {
+	body := getBody(d.item, d)
+	return detailStyle(w, h, true).Render(body)
 }
 
 func detailViewInactive(it *item, w, h int) string {
-	content := ""
-	if it != nil {
-		content = titleStyle.Render(it.title)
+	if it == nil {
+		return ""
 	}
-	return detailStyle(w, h, false).Render(content)
+	body := getBody(it, nil)
+	return detailStyle(w, h, false).Render(body)
 }

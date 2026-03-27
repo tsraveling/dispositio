@@ -12,6 +12,7 @@ import (
 type subtask struct {
 	title       string
 	description string
+	completed   bool
 }
 
 type item struct {
@@ -19,7 +20,7 @@ type item struct {
 	duration    int // in weeks
 	description string
 	subtasks    []subtask
-	finished time.Time
+	finished    time.Time
 }
 
 // dateString returns e.g. "(3.14)" for a completed item, or "" if not finished.
@@ -29,7 +30,6 @@ func (i *item) dateString() string {
 	}
 	return fmt.Sprintf("(%d.%d)", int(i.finished.Month()), i.finished.Day())
 }
-
 
 type project struct {
 	filePath     string
@@ -161,8 +161,13 @@ func parseItems(lines []string) []item {
 		}
 
 		// Checklist item
-		if strings.HasPrefix(line, "- [ ] ") {
-			st := subtask{title: strings.TrimPrefix(line, "- [ ] ")}
+		if strings.HasPrefix(line, "- [ ] ") || strings.HasPrefix(line, "- [x] ") {
+			completed := strings.HasPrefix(line, "- [x] ")
+			title := strings.TrimPrefix(line, "- [ ] ")
+			if completed {
+				title = strings.TrimPrefix(line, "- [x] ")
+			}
+			st := subtask{title: title, completed: completed}
 			// Consume indented bullet lines as description
 			for i+1 < len(lines) {
 				next := lines[i+1]
@@ -254,7 +259,11 @@ func saveProject(p project) error {
 		if len(it.subtasks) > 0 {
 			b.WriteString("\n")
 			for _, st := range it.subtasks {
-				b.WriteString("- [ ] " + st.title + "\n")
+				checkbox := "- [ ] "
+			if st.completed {
+				checkbox = "- [x] "
+			}
+			b.WriteString(checkbox + st.title + "\n")
 				if st.description != "" {
 					for _, dl := range strings.Split(st.description, "\n") {
 						b.WriteString("    - " + dl + "\n")

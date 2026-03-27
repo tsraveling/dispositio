@@ -25,6 +25,8 @@ var (
 	logColor           = lipgloss.Color("#888888") // medium gray
 
 	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
+	fadeStyle        = lipgloss.NewStyle().Foreground(fadeColor)
+	textStyle        = lipgloss.NewStyle().Foreground(textColor)
 	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
 	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
 	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(primaryColor)
