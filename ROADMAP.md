@@ -12,24 +12,23 @@ This is a description. w
 
 this is some stuff!
 
-- [ ] First task
-- [ ] Second
+- [x] First task
+- [x] Second
 
 # test (3)
 
 This is the description! I think this should work great! what if it is long? and so on? and so on? and so on? and so on? andad adsf asd fa sd fasd f a dsfa sd fa dsf a sdf asd fa sdf as dfa sdf asd f asdf as dfa sdf asd fa f
 
-- [ ] Test
-- [ ] Whoops
+- [x] Test
+- [x] Whoops
 - [ ] Smoosh
 
 # another! (4)
 
 Description
 
-- [ ] Test
-- [ ] dfdf
-- [ ] Boobs
+- [x] Test
+- [x] dfdf
 - [ ] dfdf
 
 # next (2)

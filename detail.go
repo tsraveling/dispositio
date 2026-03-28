@@ -144,6 +144,12 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 					d.taskCursor++
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
+			case " ":
+				idx := d.taskCursor
+				if len(d.item.subtasks) > idx {
+					d.item.subtasks[idx].completed = !d.item.subtasks[idx].completed
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
 			case "d":
 				if len(d.item.subtasks) > 0 {
 					d.mode = detailConfirmingDelete
