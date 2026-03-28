@@ -9,8 +9,7 @@
 - [x] Modal infrastructure
 - [x] Item detail view in a side pane if wide enough
     - [x] Text description
-    - [ ] Fun progress bar for subtasks
-    - [ ] Subtasks
+    - [x] Subtasks
     - [ ] Completion box pops modal -- are you sure? With a fun set of texts each time.
 - [ ] Item detail view in a tab system if too narrow
 - [ ] Show first few subtasks if there's space in the item block on the roadmap view

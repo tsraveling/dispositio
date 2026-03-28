@@ -11,19 +11,22 @@ const (
 	maxLogHeight = 25
 )
 
-var (
-	primaryColor       = lipgloss.Color("206")
-	secondaryColor     = lipgloss.Color("174") // light gray
-	textColor          = lipgloss.Color("254") // white
-	fadeColor          = lipgloss.Color("250") // slightly dimmer white
-	highlightColor     = lipgloss.Color("226")
-	dimColor           = lipgloss.Color("243")     // dim gray
-	gradientColorLeft  = lipgloss.Color("#7b2d8b") // dusky purple
-	gradientColorRight = lipgloss.Color("#2d8b4e") // dark mossy green
-	errorColor         = lipgloss.Color("#cc4444") // medium red
-	warningColor       = lipgloss.Color("#ccaa22") // yellow
-	logColor           = lipgloss.Color("#888888") // medium gray
+// Good checkmark characters: ✓ ✔ ☑ ▣ ◉ ● ■
+const checkmark = "✔"
 
+var (
+	primaryColor   = lipgloss.Color("206")
+	secondaryColor = lipgloss.Color("174") // light gray
+	textColor      = lipgloss.Color("254") // white
+	fadeColor      = lipgloss.Color("250") // slightly dimmer white
+	highlightColor = lipgloss.Color("226")
+	dimColor       = lipgloss.Color("243")     // dim gray
+	errorColor     = lipgloss.Color("#cc4444") // medium red
+	warningColor   = lipgloss.Color("#ccaa22") // yellow
+	logColor       = lipgloss.Color("#888888") // medium gray
+	doneColor      = lipgloss.Color("118")     // green
+
+	doneStyle        = lipgloss.NewStyle().Foreground(doneColor).Italic(true)
 	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
 	fadeStyle        = lipgloss.NewStyle().Foreground(fadeColor)
 	textStyle        = lipgloss.NewStyle().Foreground(textColor)

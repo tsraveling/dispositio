@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -21,15 +23,23 @@ const (
 	detailEditingDesc
 	detailEditingTask
 	detailConfirmingDelete
+	detailChangingCompletion
+)
+
+var (
+	completionYes = []string{"Hell yes!", "Make it so!", "Forthwith!"}
+	completionNo  = []string{"Nah.", "Maybe not.", "Not today, Satan."}
 )
 
 type detailViewModel struct {
-	item       *item
-	taskCursor int
-	mode       detailMode
-	textarea   textarea.Model
-	input      textinput.Model
-	panelWidth int
+	item             *item
+	taskCursor       int
+	mode             detailMode
+	textarea         textarea.Model
+	input            textinput.Model
+	panelWidth       int
+	completionYesIdx int
+	completionNoIdx  int
 }
 
 func makeDetailViewModel(it *item, panelWidth int) detailViewModel {
@@ -109,6 +119,25 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		}
 		return d, nil
 
+	// Changing completion status
+	case detailChangingCompletion:
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y":
+				if d.item.finished.IsZero() {
+					d.item.finished = time.Now()
+				} else {
+					d.item.finished = time.Time{}
+				}
+				d.mode = detailNormal
+				return d, func() tea.Msg { return detailSaveMsg{} }
+			case "n", "esc":
+				d.mode = detailNormal
+				return d, nil
+			}
+		}
+		return d, nil
+
 	// Normal detail navigation
 	case detailNormal:
 		if msg, ok := msg.(tea.KeyMsg); ok {
@@ -169,6 +198,11 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 				d.item.subtasks[insertIdx] = newTask
 				d.taskCursor = insertIdx
 				return d, textinput.Blink
+			case "c":
+				d.mode = detailChangingCompletion
+				d.completionYesIdx = rand.Intn(len(completionYes))
+				d.completionNoIdx = rand.Intn(len(completionNo))
+				return d, nil
 			case "x":
 				if len(d.item.subtasks) > 0 {
 					d.item.subtasks[d.taskCursor].completed = !d.item.subtasks[d.taskCursor].completed
@@ -239,7 +273,27 @@ func getBody(item *item, dv *detailViewModel) string {
 		}
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s", title, desc, b.String())
+	confirmStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+
+	itemStatus := ""
+	if active && dv.mode == detailChangingCompletion {
+		if !item.finished.IsZero() {
+			itemStatus = confirmStyle.Render("Unmark complete? y/n")
+		} else {
+			line1 := lipgloss.NewStyle().Foreground(doneColor).Render("Mark this item complete as of today?")
+			line2 := confirmStyle.Render("y. " + completionYes[dv.completionYesIdx])
+			line3 := dimStyle.Render("n. " + completionNo[dv.completionNoIdx])
+			itemStatus = fmt.Sprintf("%s\n\n%s\n%s", line1, line2, line3)
+		}
+	} else if item.finished.IsZero() {
+		if active {
+			itemStatus = dimStyle.Render("~ hit c to mark this item complete. ~")
+		}
+	} else {
+		itemStatus = doneStyle.Render(checkmark + " Completed on " + item.finished.Format("Jan 2, 2006"))
+	}
+
+	return fmt.Sprintf("%s\n\n%s\n\n%s\n\n%s", title, desc, b.String(), itemStatus)
 }
 
 func (d *detailViewModel) View(w, h int) string {
