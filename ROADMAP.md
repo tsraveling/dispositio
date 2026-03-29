@@ -15,15 +15,10 @@ this is some stuff!
 - [x] First task
 - [x] Second
 
-# test (3)
-
-This is the description! I think this should work great! what if it is long? and so on? and so on? and so on? and so on? andad adsf asd fa sd fasd f a dsfa sd fa dsf a sdf asd fa sdf as dfa sdf asd f asdf as dfa sdf asd fa f
-
-- [x] Test
-- [x] Whoops
-- [ ] Smoosh
-
 # another! (4)
+```
+Finished: Mar 28 2026
+```
 
 Description
 
@@ -32,3 +27,14 @@ Description
 - [ ] dfdf
 
 # next (2)
+```
+Finished: Mar 29 2026
+```
+
+# test (3)
+
+This is the description! I think this should work great! what if it is long? and so on? and so on? and so on? and so on? andad adsf asd fa sd fasd f a dsfa sd fa dsf a sdf asd fa sdf as dfa sdf asd f asdf as dfa sdf asd fa f
+
+- [x] Test
+- [x] Whoops
+- [ ] Smoosh

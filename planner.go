@@ -152,6 +152,40 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if _, ok := msg.(detailItemCompletedMsg); ok {
+		// Find the index of the completed item
+		completedIdx := -1
+		for i := range m.prj.items {
+			if &m.prj.items[i] == m.detail.item {
+				completedIdx = i
+				break
+			}
+		}
+
+		if completedIdx >= 0 {
+			// Find the first active (non-finished) item
+			activeIdx := -1
+			for i, it := range m.prj.items {
+				if it.finished.IsZero() {
+					activeIdx = i
+					break
+				}
+			}
+
+			// If the completed item is after the active item, move it just before
+			if activeIdx >= 0 && completedIdx > activeIdx {
+				completed := m.prj.items[completedIdx]
+				m.prj.items = append(m.prj.items[:completedIdx], m.prj.items[completedIdx+1:]...)
+				m.prj.items = append(m.prj.items[:activeIdx], append([]item{completed}, m.prj.items[activeIdx:]...)...)
+				m.cursor = activeIdx + 1 // cursor-space
+			}
+		}
+
+		m.detail = nil
+		m.prj.save()
+		return m, nil
+	}
+
 	// Route to active modal; always consumes input when present.
 	if m.currentModal != nil {
 		var cmd tea.Cmd

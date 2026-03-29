@@ -15,6 +15,7 @@ import (
 
 type detailCloseMsg struct{}
 type detailSaveMsg struct{}
+type detailItemCompletedMsg struct{}
 
 type detailMode int
 
@@ -126,9 +127,10 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 			case "y":
 				if d.item.finished.IsZero() {
 					d.item.finished = time.Now()
-				} else {
-					d.item.finished = time.Time{}
+					d.mode = detailNormal
+					return d, func() tea.Msg { return detailItemCompletedMsg{} }
 				}
+				d.item.finished = time.Time{}
 				d.mode = detailNormal
 				return d, func() tea.Msg { return detailSaveMsg{} }
 			case "n", "esc":
