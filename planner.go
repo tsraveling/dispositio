@@ -15,6 +15,7 @@ type plannerMode int
 const (
 	normal plannerMode = iota
 	editingTitle
+	editingProjectName
 	confirmingDeletion
 )
 
@@ -24,6 +25,8 @@ type plannerViewModel struct {
 	mode         plannerMode
 	detail       *detailViewModel
 	input        textinput.Model
+	preEditTitle string // original title before editing, for esc revert
+	isNewItem    bool   // true when editing a newly added item (delete on esc)
 	currentModal modal
 }
 
@@ -103,6 +106,8 @@ func (m *plannerViewModel) addNewAt(cursor int) tea.Cmd {
 	}
 
 	m.cursor = itemIdx + 1 // convert back to cursor-space
+	m.preEditTitle = ""
+	m.isNewItem = true
 	m.mode = editingTitle
 	m.input.SetValue("")
 	m.input.Focus()
@@ -224,8 +229,8 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.mode = normal
 				m.input.Blur()
-				// If title is empty, remove the item
-				if m.prj.items[idx].title == "" {
+				m.prj.items[idx].title = m.preEditTitle
+				if m.isNewItem {
 					m.prj.items = append(m.prj.items[:idx], m.prj.items[idx+1:]...)
 					if idx >= len(m.prj.items) && m.cursor > 1 {
 						m.cursor--
@@ -248,6 +253,27 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		m.prj.items[idx].title = m.input.Value()
+		return m, cmd
+
+	// SECTION: Project Name Editing Mode
+	case editingProjectName:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				m.mode = normal
+				m.input.Blur()
+				return m, nil
+			case "enter":
+				m.prj.name = m.input.Value()
+				m.mode = normal
+				m.input.Blur()
+				m.prj.save()
+				return m, nil
+			}
+		}
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
 		return m, cmd
 
 	// SECTION: Confirming Deletion Mode
@@ -290,6 +316,23 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "a":
 				cmd := m.addNewAt(m.cursor)
 				return m, cmd
+			case "e":
+				if m.onMeta() {
+					m.mode = editingProjectName
+					m.input.SetValue(m.prj.name)
+					m.input.CursorEnd()
+					m.input.Focus()
+					return m, textinput.Blink
+				} else {
+					idx := m.itemIndex()
+					m.preEditTitle = m.prj.items[idx].title
+					m.isNewItem = false
+					m.mode = editingTitle
+					m.input.SetValue(m.prj.items[idx].title)
+					m.input.CursorEnd()
+					m.input.Focus()
+					return m, textinput.Blink
+				}
 			case "d":
 				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
@@ -374,30 +417,50 @@ func (m plannerViewModel) plannerView() string {
 	monday := startDate.AddDate(0, 0, -daysUntilMonday)
 
 	// Generate the lines for the whole project first.
-	// Top padding is part of the line list so the viewport clips correctly.
-	const topPadding = 2
-	const metaHeight = 2
 	lines := []string{"", ""}
 	cursorRow := 0
 
 	row := 0     // Row for cursor
 	weekRow := 0 // Row for date calc
 
-	// Meta item: project start date (2 rows)
+	// Meta item: project title + start date
+	panelWidth := cfg.ww/2 - 4 // account for padding; narrow mode uses full width
+	if cfg.ww < minSideBySideWidth {
+		panelWidth = cfg.ww - 4
+	}
 	{
 		style := normalStyle
 		if m.onMeta() {
 			style = selectedStyle
-			cursorRow = topPadding
+			cursorRow = len(lines)
 		}
+
+		// Project title
+		titleText := strings.ToUpper(m.prj.name)
+		if m.mode == editingProjectName {
+			lines = append(lines, m.input.View())
+		} else if titleText != "" {
+			pad := max(0, (panelWidth-len(titleText))/2)
+			lines = append(lines, strings.Repeat(" ", pad)+primaryStyle.Render(titleText))
+			lines = append(lines, strings.Repeat(" ", pad)+primaryStyle.Render(strings.Repeat("=", len(titleText))))
+		} else if m.isHoveringMeta() {
+			lines = append(lines, dimStyle.Render("e to set project name"))
+		}
+
+		// Extra space between title and start date
+		lines = append(lines, "")
+
+		// Start date
 		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
 		lines = append(lines, style.Render(label))
 		if m.isHoveringMeta() {
 			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))
 		} else {
-			lines = append(lines, style.Render(""))
+			lines = append(lines, "")
 		}
+		lines = append(lines, "")
 	}
+	itemsStart := len(lines) // line index where items begin
 
 	// If there are no items, show a hint
 	if len(m.prj.items) == 0 {
@@ -408,7 +471,7 @@ func (m plannerViewModel) plannerView() string {
 	// Iterate through the items in the project
 	for i, it := range m.prj.items {
 		if i == m.itemIndex() {
-			cursorRow = row + metaHeight + topPadding
+			cursorRow = row + itemsStart
 		}
 
 		isCurrent := m.prj.isCurrent(i)

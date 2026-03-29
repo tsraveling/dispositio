@@ -41,6 +41,8 @@ type detailViewModel struct {
 	mode             detailMode
 	textarea         textarea.Model
 	input            textinput.Model
+	preEditTitle     string // original subtask title for esc revert
+	isNewSubtask     bool   // true when editing a newly added subtask
 	panelWidth       int
 	completionYesIdx int
 	completionNoIdx  int
@@ -97,6 +99,13 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 			case "esc":
 				d.mode = detailNormal
 				d.input.Blur()
+				d.item.subtasks[d.taskCursor].title = d.preEditTitle
+				if d.isNewSubtask {
+					d.item.subtasks = append(d.item.subtasks[:d.taskCursor], d.item.subtasks[d.taskCursor+1:]...)
+					if d.taskCursor >= len(d.item.subtasks) && d.taskCursor > 0 {
+						d.taskCursor--
+					}
+				}
 				return d, nil
 			}
 		}
@@ -184,11 +193,23 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 					d.item.subtasks[idx].completed = !d.item.subtasks[idx].completed
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
+			case "e":
+				if len(d.item.subtasks) > 0 {
+					d.preEditTitle = d.item.subtasks[d.taskCursor].title
+					d.isNewSubtask = false
+					d.mode = detailEditingTask
+					d.input.SetValue(d.item.subtasks[d.taskCursor].title)
+					d.input.CursorEnd()
+					d.input.Focus()
+					return d, textinput.Blink
+				}
 			case "d":
 				if len(d.item.subtasks) > 0 {
 					d.mode = detailConfirmingDelete
 				}
 			case "a":
+				d.preEditTitle = ""
+				d.isNewSubtask = true
 				d.mode = detailEditingTask
 				d.input.SetValue("")
 				d.input.Focus()
