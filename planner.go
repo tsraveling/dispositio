@@ -52,15 +52,28 @@ func (m *plannerViewModel) itemIndexForDate(t time.Time) int {
 	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
 	monday := startDate.AddDate(0, 0, -daysUntilMonday)
 	tYear, tWeek := t.ISOWeek()
-	row := 0
+	weekRow := 0
 	for i, it := range m.prj.items {
-		for range it.duration {
-			ws := monday.AddDate(0, 0, row*7)
+		for w := range it.duration {
+			ws := monday.AddDate(0, 0, weekRow*7)
 			wsYear, wsWeek := ws.ISOWeek()
+
+			// Mirror the truncation logic from plannerView
+			if !it.finished.IsZero() && ws.After(it.finished) {
+				// sameWeekFinish: still a valid row but doesn't advance weekRow
+				if w == 0 {
+					if wsYear == tYear && wsWeek == tWeek {
+						return i
+					}
+					break
+				}
+				break
+			}
+
 			if wsYear == tYear && wsWeek == tWeek {
 				return i
 			}
-			row++
+			weekRow++
 		}
 	}
 	return -1
@@ -106,13 +119,9 @@ func (m *plannerViewModel) gotoDetail() {
 func (m *plannerViewModel) addNewAt(cursor int) tea.Cmd {
 	newItem := item{title: "", duration: 1}
 
-	// Convert cursor to item index; if on meta (0), insert at position 0
-	itemIdx := cursor // item insert position in items slice
-	if cursor == 0 {
-		itemIdx = 0
-	} else {
-		itemIdx = cursor // cursor 1 -> after items[0], etc.
-	}
+	// Convert cursor to item index; meta (0) inserts at position 0,
+	// otherwise cursor N inserts after items[N-1].
+	itemIdx := cursor
 
 	if len(m.prj.items) < 1 {
 		m.prj.items = []item{newItem}

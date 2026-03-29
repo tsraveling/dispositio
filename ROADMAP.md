@@ -16,9 +16,6 @@ this is some stuff!
 - [x] Second
 
 # another! (4)
-```
-Finished: Mar 28 2026
-```
 
 Description
 
