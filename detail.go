@@ -35,6 +35,7 @@ var (
 
 type detailViewModel struct {
 	item             *item
+	itemStart        time.Time
 	taskCursor       int
 	mode             detailMode
 	textarea         textarea.Model
@@ -44,7 +45,7 @@ type detailViewModel struct {
 	completionNoIdx  int
 }
 
-func makeDetailViewModel(it *item, panelWidth int) detailViewModel {
+func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time) detailViewModel {
 	ta := textarea.New()
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = true
@@ -57,7 +58,7 @@ func makeDetailViewModel(it *item, panelWidth int) detailViewModel {
 	ti.Placeholder = "Subtask title..."
 	ti.CharLimit = 120
 
-	return detailViewModel{item: it, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
+	return detailViewModel{item: it, itemStart: itemStart, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
 }
 
 func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
@@ -294,6 +295,21 @@ func getBody(item *item, dv *detailViewModel) string {
 		}
 	} else {
 		itemStatus = doneStyle.Render(checkmark + " Completed on " + item.finished.Format("Jan 2, 2006"))
+
+		estimated := fmt.Sprintf("Estimated: %dw", item.duration)
+		var actual string
+		if dv != nil {
+			aw := item.actualWeeks(dv.itemStart)
+			if aw < 1 {
+				actual = "Actual: <1w"
+			} else {
+				actual = fmt.Sprintf("Actual: %dw", aw)
+			}
+		}
+		itemStatus += "\n" + dimStyle.Render(estimated)
+		if actual != "" {
+			itemStatus += "\n" + dimStyle.Render(actual)
+		}
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s\n\n%s", title, desc, b.String(), itemStatus)

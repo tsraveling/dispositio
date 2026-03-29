@@ -109,7 +109,7 @@ func (m *plannerViewModel) detailPanelWidth() int {
 func (m *plannerViewModel) gotoDetail() {
 	if !m.onMeta() {
 		idx := m.itemIndex()
-		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth())
+		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx))
 		m.detail = &dvm
 	}
 }
@@ -363,7 +363,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.save()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
-					if m.prj.items[idx].duration > 1 {
+					if m.prj.items[idx].finished.IsZero() && m.prj.items[idx].duration > 1 {
 						m.prj.items[idx].duration--
 						m.prj.save()
 					}
@@ -374,8 +374,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.save()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
-					m.prj.items[idx].duration++
-					m.prj.save()
+					if m.prj.items[idx].finished.IsZero() {
+						m.prj.items[idx].duration++
+						m.prj.save()
+					}
 				}
 			case "esc", "ctrl+c":
 				return m, tea.Quit
@@ -404,8 +406,10 @@ func (m plannerViewModel) plannerView() string {
 	monday := startDate.AddDate(0, 0, -daysUntilMonday)
 
 	// Generate the lines for the whole project first.
+	// Top padding is part of the line list so the viewport clips correctly.
+	const topPadding = 2
 	const metaHeight = 2
-	var lines []string
+	lines := []string{"", ""}
 	cursorRow := 0
 
 	row := 0     // Row for cursor
@@ -416,7 +420,7 @@ func (m plannerViewModel) plannerView() string {
 		style := normalStyle
 		if m.onMeta() {
 			style = selectedStyle
-			cursorRow = 0
+			cursorRow = topPadding
 		}
 		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
 		lines = append(lines, style.Render(label))
@@ -436,7 +440,7 @@ func (m plannerViewModel) plannerView() string {
 	// Iterate through the items in the project
 	for i, it := range m.prj.items {
 		if i == m.itemIndex() {
-			cursorRow = row + metaHeight
+			cursorRow = row + metaHeight + topPadding
 		}
 
 		// Iterate for as many weeks as the item is scheduled for
@@ -542,7 +546,7 @@ func (m plannerViewModel) View() string {
 		// Panel mode: always show both panels
 		plannerWidth := cfg.ww / 2
 		detailWidth := cfg.ww - plannerWidth
-		plannerCol := lipgloss.NewStyle().Width(plannerWidth).Height(cfg.wh).Render(plannerStr)
+		plannerCol := lipgloss.NewStyle().Width(plannerWidth).Height(cfg.wh).PaddingLeft(2).Render(plannerStr)
 
 		var detailCol string
 		if m.detail != nil {
@@ -565,5 +569,6 @@ func (m plannerViewModel) View() string {
 		return modalView(m.currentModal, detailStr)
 	}
 
-	return modalView(m.currentModal, plannerStr)
+	paddedPlanner := lipgloss.NewStyle().PaddingLeft(2).Render(plannerStr)
+	return modalView(m.currentModal, paddedPlanner)
 }

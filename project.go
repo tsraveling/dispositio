@@ -31,6 +31,36 @@ func (i *item) dateString() string {
 	return fmt.Sprintf("(%d.%d)", int(i.finished.Month()), i.finished.Day())
 }
 
+// actualWeeks returns the number of weeks an item actually took, given
+// the Monday it started on and its finished date.
+func (i *item) actualWeeks(itemStart time.Time) int {
+	if i.finished.IsZero() {
+		return 0
+	}
+	days := int(i.finished.Sub(itemStart).Hours() / 24)
+	weeks := days / 7
+	if days%7 > 0 {
+		weeks++
+	}
+	return weeks
+}
+
+// itemStartDate returns the Monday on which the given item (by index) begins,
+// based on the project start date and the durations of all preceding items.
+func (p *project) itemStartDate(idx int) time.Time {
+	weekday := p.startDate.Weekday()
+	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
+	monday := p.startDate.AddDate(0, 0, -daysUntilMonday)
+	weekRow := 0
+	for i, it := range p.items {
+		if i == idx {
+			break
+		}
+		weekRow += it.duration
+	}
+	return monday.AddDate(0, 0, weekRow*7)
+}
+
 type project struct {
 	filePath     string
 	name         string
