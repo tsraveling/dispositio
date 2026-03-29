@@ -212,6 +212,26 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 					d.item.subtasks[d.taskCursor].completed = !d.item.subtasks[d.taskCursor].completed
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
+			case "-":
+				if !d.item.finished.IsZero() {
+					d.item.finished = d.item.finished.AddDate(0, 0, -1)
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
+			case "=":
+				if !d.item.finished.IsZero() {
+					d.item.finished = d.item.finished.AddDate(0, 0, 1)
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
+			case "_":
+				if !d.item.finished.IsZero() {
+					d.item.finished = d.item.finished.AddDate(0, 0, -7)
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
+			case "+":
+				if !d.item.finished.IsZero() {
+					d.item.finished = d.item.finished.AddDate(0, 0, 7)
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
 			}
 		}
 	}
@@ -309,6 +329,9 @@ func getBody(item *item, dv *detailViewModel) string {
 		itemStatus += "\n" + dimStyle.Render(estimated)
 		if actual != "" {
 			itemStatus += "\n" + dimStyle.Render(actual)
+		}
+		if active {
+			itemStatus += "\n\n" + dimStyle.Render("-+ change date, shift: by week")
 		}
 	}
 
