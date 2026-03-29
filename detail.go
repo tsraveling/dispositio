@@ -64,6 +64,22 @@ func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time, isCurren
 	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
 }
 
+// insertSubtaskAt inserts a new empty subtask at the given index and enters editing mode.
+func (d *detailViewModel) insertSubtaskAt(idx int) tea.Cmd {
+	idx = max(0, min(idx, len(d.item.subtasks)))
+	d.preEditTitle = ""
+	d.isNewSubtask = true
+	d.mode = detailEditingTask
+	d.input.SetValue("")
+	d.input.Focus()
+	newTask := subtask{}
+	d.item.subtasks = append(d.item.subtasks, subtask{})
+	copy(d.item.subtasks[idx+1:], d.item.subtasks[idx:])
+	d.item.subtasks[idx] = newTask
+	d.taskCursor = idx
+	return textinput.Blink
+}
+
 func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 
 	switch d.mode {
@@ -208,22 +224,19 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 					d.mode = detailConfirmingDelete
 				}
 			case "a":
-				d.preEditTitle = ""
-				d.isNewSubtask = true
-				d.mode = detailEditingTask
-				d.input.SetValue("")
-				d.input.Focus()
-				// Insert a placeholder subtask after current cursor
-				insertIdx := d.taskCursor + 1
+				return d, d.insertSubtaskAt(len(d.item.subtasks))
+			case "o":
+				idx := d.taskCursor + 1
 				if len(d.item.subtasks) == 0 {
-					insertIdx = 0
+					idx = 0
 				}
-				newTask := subtask{}
-				d.item.subtasks = append(d.item.subtasks, subtask{})
-				copy(d.item.subtasks[insertIdx+1:], d.item.subtasks[insertIdx:])
-				d.item.subtasks[insertIdx] = newTask
-				d.taskCursor = insertIdx
-				return d, textinput.Blink
+				return d, d.insertSubtaskAt(idx)
+			case "O":
+				idx := d.taskCursor
+				if len(d.item.subtasks) == 0 {
+					idx = 0
+				}
+				return d, d.insertSubtaskAt(idx)
 			case "c":
 				d.mode = detailChangingCompletion
 				d.completionYesIdx = rand.Intn(len(completionYes))

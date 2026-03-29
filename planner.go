@@ -87,25 +87,22 @@ func (m *plannerViewModel) gotoDetail() {
 	}
 }
 
-// addNewAt inserts a new empty item after the current cursor position and enters editing mode.
-// cursor is in cursor-space (0=meta, 1+=items).
-func (m *plannerViewModel) addNewAt(cursor int) tea.Cmd {
+// insertItemAt inserts a new empty item at the given index in prj.items
+// and enters editing mode.
+func (m *plannerViewModel) insertItemAt(idx int) tea.Cmd {
 	newItem := item{title: "", duration: 1}
 
-	// Convert cursor to item index; meta (0) inserts at position 0,
-	// otherwise cursor N inserts after items[N-1].
-	itemIdx := cursor
-
-	if len(m.prj.items) < 1 {
+	if len(m.prj.items) == 0 {
 		m.prj.items = []item{newItem}
-		itemIdx = 0
+		idx = 0
 	} else {
+		idx = max(0, min(idx, len(m.prj.items)))
 		m.prj.items = append(m.prj.items, item{})
-		copy(m.prj.items[itemIdx+1:], m.prj.items[itemIdx:])
-		m.prj.items[itemIdx] = newItem
+		copy(m.prj.items[idx+1:], m.prj.items[idx:])
+		m.prj.items[idx] = newItem
 	}
 
-	m.cursor = itemIdx + 1 // convert back to cursor-space
+	m.cursor = idx + 1 // convert to cursor-space
 	m.preEditTitle = ""
 	m.isNewItem = true
 	m.mode = editingTitle
@@ -314,8 +311,19 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor++
 				}
 			case "a":
-				cmd := m.addNewAt(m.cursor)
-				return m, cmd
+				return m, m.insertItemAt(len(m.prj.items))
+			case "o":
+				idx := m.itemIndex() + 1 // after current; if on meta, inserts at 0
+				if m.onMeta() {
+					idx = 0
+				}
+				return m, m.insertItemAt(idx)
+			case "O":
+				idx := m.itemIndex() // before current
+				if m.onMeta() {
+					idx = 0
+				}
+				return m, m.insertItemAt(idx)
 			case "e":
 				if m.onMeta() {
 					m.mode = editingProjectName
