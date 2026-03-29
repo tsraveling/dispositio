@@ -31,13 +31,14 @@ func (i *item) dateString() string {
 	return fmt.Sprintf("(%d.%d)", int(i.finished.Month()), i.finished.Day())
 }
 
-// actualWeeks returns the number of weeks an item actually took, given
-// the Monday it started on and its finished date.
+// actualWeeks returns the number of weeks from itemStart to the item's end
+// (finished date, or now if still in progress).
 func (i *item) actualWeeks(itemStart time.Time) int {
-	if i.finished.IsZero() {
-		return 0
+	end := i.finished
+	if end.IsZero() {
+		end = time.Now()
 	}
-	days := int(i.finished.Sub(itemStart).Hours() / 24)
+	days := int(end.Sub(itemStart).Hours() / 24)
 	weeks := days / 7
 	if days%7 > 0 {
 		weeks++
@@ -45,8 +46,26 @@ func (i *item) actualWeeks(itemStart time.Time) int {
 	return weeks
 }
 
-// itemStartDate returns the Monday on which the given item (by index) begins,
-// based on the project start date and the durations of all preceding items.
+// actualDuration returns the effective number of weeks this item occupies:
+// the greater of its planned duration and the actual weeks taken.
+func (i *item) actualDuration(itemStart time.Time) int {
+	return max(i.duration, i.actualWeeks(itemStart))
+}
+
+// isCurrent returns true if the item at idx is the first non-completed item
+// in the project — i.e. the one actively being worked on.
+func (p *project) isCurrent(idx int) bool {
+	for i, it := range p.items {
+		if it.finished.IsZero() {
+			return i == idx
+		}
+	}
+	return false
+}
+
+// itemStartDate returns the Monday on which the given item (by index) begins.
+// For completed items that ran past their planned duration, the actual weeks
+// taken push subsequent items forward.
 func (p *project) itemStartDate(idx int) time.Time {
 	weekday := p.startDate.Weekday()
 	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
@@ -56,7 +75,8 @@ func (p *project) itemStartDate(idx int) time.Time {
 		if i == idx {
 			break
 		}
-		weekRow += it.duration
+		start := monday.AddDate(0, 0, weekRow*7)
+		weekRow += it.actualDuration(start)
 	}
 	return monday.AddDate(0, 0, weekRow*7)
 }
@@ -290,10 +310,10 @@ func saveProject(p project) error {
 			b.WriteString("\n")
 			for _, st := range it.subtasks {
 				checkbox := "- [ ] "
-			if st.completed {
-				checkbox = "- [x] "
-			}
-			b.WriteString(checkbox + st.title + "\n")
+				if st.completed {
+					checkbox = "- [x] "
+				}
+				b.WriteString(checkbox + st.title + "\n")
 				if st.description != "" {
 					for _, dl := range strings.Split(st.description, "\n") {
 						b.WriteString("    - " + dl + "\n")

@@ -36,6 +36,7 @@ var (
 type detailViewModel struct {
 	item             *item
 	itemStart        time.Time
+	isCurrent        bool
 	taskCursor       int
 	mode             detailMode
 	textarea         textarea.Model
@@ -45,7 +46,7 @@ type detailViewModel struct {
 	completionNoIdx  int
 }
 
-func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time) detailViewModel {
+func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time, isCurrent bool) detailViewModel {
 	ta := textarea.New()
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = true
@@ -58,7 +59,7 @@ func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time) detailVi
 	ti.Placeholder = "Subtask title..."
 	ti.CharLimit = 120
 
-	return detailViewModel{item: it, itemStart: itemStart, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
+	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
 }
 
 func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
@@ -239,7 +240,7 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	return d, nil
 }
 
-func getBody(item *item, dv *detailViewModel) string {
+func getBody(item *item, dv *detailViewModel, itemStart time.Time, isCurrent bool) string {
 	title := titleStyle.Render(item.title)
 	active := dv != nil
 
@@ -310,26 +311,30 @@ func getBody(item *item, dv *detailViewModel) string {
 			itemStatus = fmt.Sprintf("%s\n\n%s\n%s", line1, line2, line3)
 		}
 	} else if item.finished.IsZero() {
+		if isCurrent {
+			aw := item.actualWeeks(itemStart)
+			if aw > item.duration {
+				overdueStyle := lipgloss.NewStyle().Foreground(errorColor)
+				itemStatus = dimStyle.Render(fmt.Sprintf("Estimated: %dw", item.duration))
+				itemStatus += "\n" + overdueStyle.Render(fmt.Sprintf("Actual: %dw", aw))
+			}
+		}
 		if active {
-			itemStatus = dimStyle.Render("~ hit c to mark this item complete. ~")
+			itemStatus += "\n\n" + dimStyle.Render("~ hit c to mark this item complete. ~")
 		}
 	} else {
 		itemStatus = doneStyle.Render(checkmark + " Completed on " + item.finished.Format("Jan 2, 2006"))
 
 		estimated := fmt.Sprintf("Estimated: %dw", item.duration)
+		aw := item.actualWeeks(itemStart)
 		var actual string
-		if dv != nil {
-			aw := item.actualWeeks(dv.itemStart)
-			if aw < 1 {
-				actual = "Actual: <1w"
-			} else {
-				actual = fmt.Sprintf("Actual: %dw", aw)
-			}
+		if aw < 1 {
+			actual = "Actual: <1w"
+		} else {
+			actual = fmt.Sprintf("Actual: %dw", aw)
 		}
 		itemStatus += "\n" + dimStyle.Render(estimated)
-		if actual != "" {
-			itemStatus += "\n" + dimStyle.Render(actual)
-		}
+		itemStatus += "\n" + dimStyle.Render(actual)
 		if active {
 			itemStatus += "\n\n" + dimStyle.Render("-+ change date, shift: by week")
 		}
@@ -339,14 +344,14 @@ func getBody(item *item, dv *detailViewModel) string {
 }
 
 func (d *detailViewModel) View(w, h int) string {
-	body := getBody(d.item, d)
+	body := getBody(d.item, d, d.itemStart, d.isCurrent)
 	return detailStyle(w, h, true).Render(body)
 }
 
-func detailViewInactive(it *item, w, h int) string {
+func detailViewInactive(it *item, w, h int, itemStart time.Time, isCurrent bool) string {
 	if it == nil {
 		return ""
 	}
-	body := getBody(it, nil)
+	body := getBody(it, nil, itemStart, isCurrent)
 	return detailStyle(w, h, false).Render(body)
 }

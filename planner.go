@@ -44,41 +44,6 @@ func (m *plannerViewModel) isHoveringMeta() bool {
 	return m.cursor == 0 && m.mode == normal
 }
 
-// itemIndexForDate returns the item index (into prj.items) whose week range
-// contains the given date, or -1 if no item covers that date.
-func (m *plannerViewModel) itemIndexForDate(t time.Time) int {
-	startDate := m.prj.startDate
-	weekday := startDate.Weekday()
-	daysUntilMonday := (int(weekday) - int(time.Monday) + 7) % 7
-	monday := startDate.AddDate(0, 0, -daysUntilMonday)
-	tYear, tWeek := t.ISOWeek()
-	weekRow := 0
-	for i, it := range m.prj.items {
-		for w := range it.duration {
-			ws := monday.AddDate(0, 0, weekRow*7)
-			wsYear, wsWeek := ws.ISOWeek()
-
-			// Mirror the truncation logic from plannerView
-			if !it.finished.IsZero() && ws.After(it.finished) {
-				// sameWeekFinish: still a valid row but doesn't advance weekRow
-				if w == 0 {
-					if wsYear == tYear && wsWeek == tWeek {
-						return i
-					}
-					break
-				}
-				break
-			}
-
-			if wsYear == tYear && wsWeek == tWeek {
-				return i
-			}
-			weekRow++
-		}
-	}
-	return -1
-}
-
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti := textinput.New()
 	ti.Placeholder = "Item title..."
@@ -87,9 +52,14 @@ func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	// Copy project into value mode so we can mutate it bubbletea-style
 	m := plannerViewModel{prj: *p, input: ti, mode: normal}
 
-	// Start cursor on the item that contains the current week
-	if idx := m.itemIndexForDate(time.Now()); idx >= 0 {
-		m.cursor = idx + 1 // cursor-space: 0=meta, 1+=items
+	// Start cursor on the current item (first non-completed),
+	// or the last item if everything is completed.
+	m.cursor = len(m.prj.items) // default: last item in cursor-space
+	for i, it := range m.prj.items {
+		if it.finished.IsZero() {
+			m.cursor = i + 1
+			break
+		}
 	}
 
 	return m, m.Init()
@@ -109,7 +79,7 @@ func (m *plannerViewModel) detailPanelWidth() int {
 func (m *plannerViewModel) gotoDetail() {
 	if !m.onMeta() {
 		idx := m.itemIndex()
-		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx))
+		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx), m.prj.isCurrent(idx))
 		m.detail = &dvm
 	}
 }
@@ -363,7 +333,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.save()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
-					if m.prj.items[idx].finished.IsZero() && m.prj.items[idx].duration > 1 {
+					if m.prj.items[idx].duration > 1 {
 						m.prj.items[idx].duration--
 						m.prj.save()
 					}
@@ -374,10 +344,8 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.save()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
-					if m.prj.items[idx].finished.IsZero() {
-						m.prj.items[idx].duration++
-						m.prj.save()
-					}
+					m.prj.items[idx].duration++
+					m.prj.save()
 				}
 			case "esc", "ctrl+c":
 				return m, tea.Quit
@@ -443,8 +411,12 @@ func (m plannerViewModel) plannerView() string {
 			cursorRow = row + metaHeight + topPadding
 		}
 
-		// Iterate for as many weeks as the item is scheduled for
-		for w := range it.duration {
+		isCurrent := m.prj.isCurrent(i)
+		itemStart := monday.AddDate(0, 0, weekRow*7)
+		renderWeeks := it.actualDuration(itemStart)
+
+		// Iterate for as many weeks as the item should be rendered
+		for w := range renderWeeks {
 
 			// Get the date of the first monday, and the week of the year
 			// TODO: Add start of week day to config.ini
@@ -486,12 +458,13 @@ func (m plannerViewModel) plannerView() string {
 
 			var rightSide string
 
-			// Symbols: ✓ done, ⬤ first non-done after done, ◯ pending
+			// Symbols: ✓ done, ⬤ current, ◯ pending, ⚠ overdue
+			overdue := isCurrent && w >= it.duration
 			symbol := "◯"
 			if !it.finished.IsZero() {
 				symbol = "✓"
 				rightStyle = rightStyle.Italic(true)
-			} else if i == 0 || !m.prj.items[i-1].finished.IsZero() {
+			} else if isCurrent {
 				symbol = "⬤"
 			}
 
@@ -510,6 +483,8 @@ func (m plannerViewModel) plannerView() string {
 					}
 					rightSide = rightStyle.Render(symbol+"  "+it.title) + dateStr
 				}
+			} else if overdue {
+				rightSide = rightStyle.Render("⚠")
 			} else {
 				rightSide = rightStyle.Render("⚬")
 			}
@@ -553,10 +528,15 @@ func (m plannerViewModel) View() string {
 			detailCol = m.detail.View(detailWidth, cfg.wh)
 		} else {
 			var it *item
+			var itemStart time.Time
+			var isCurrent bool
 			if !m.onMeta() {
-				it = &m.prj.items[m.itemIndex()]
+				idx := m.itemIndex()
+				it = &m.prj.items[idx]
+				itemStart = m.prj.itemStartDate(idx)
+				isCurrent = m.prj.isCurrent(idx)
 			}
-			detailCol = detailViewInactive(it, detailWidth, cfg.wh)
+			detailCol = detailViewInactive(it, detailWidth, cfg.wh, itemStart, isCurrent)
 		}
 
 		combined := lipgloss.JoinHorizontal(lipgloss.Top, plannerCol, detailCol)
