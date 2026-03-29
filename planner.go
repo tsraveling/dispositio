@@ -195,6 +195,41 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if _, ok := msg.(detailItemUncompletedMsg); ok {
+		// When un-completing an item that sits before other completed items,
+		// move it so it comes after the last completed item. This keeps all
+		// finished items grouped at the top of the list.
+		uncompletedIdx := -1
+		for i := range m.prj.items {
+			if &m.prj.items[i] == m.detail.item {
+				uncompletedIdx = i
+				break
+			}
+		}
+
+		if uncompletedIdx >= 0 {
+			// Find the last completed item
+			lastFinishedIdx := -1
+			for i, it := range m.prj.items {
+				if !it.finished.IsZero() {
+					lastFinishedIdx = i
+				}
+			}
+
+			// If there are completed items after this one, move it after them
+			if lastFinishedIdx > uncompletedIdx {
+				uncompleted := m.prj.items[uncompletedIdx]
+				m.prj.items = append(m.prj.items[:uncompletedIdx], m.prj.items[uncompletedIdx+1:]...)
+				m.prj.items = append(m.prj.items[:lastFinishedIdx], append([]item{uncompleted}, m.prj.items[lastFinishedIdx:]...)...)
+				m.cursor = lastFinishedIdx + 1 // cursor-space
+			}
+		}
+
+		m.detail = nil
+		m.prj.save()
+		return m, nil
+	}
+
 	// Route to active modal; always consumes input when present.
 	if m.currentModal != nil {
 		var cmd tea.Cmd
