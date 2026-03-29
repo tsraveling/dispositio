@@ -363,7 +363,9 @@ func (m plannerViewModel) plannerView() string {
 	const metaHeight = 2
 	var lines []string
 	cursorRow := 0
-	row := 0
+
+	row := 0     // Row for cursor
+	weekRow := 0 // Row for date calc
 
 	// Meta item: project start date (2 rows)
 	{
@@ -387,37 +389,53 @@ func (m plannerViewModel) plannerView() string {
 		return strings.Join(lines, "\n") + "\n"
 	}
 
+	// Iterate through the items in the project
 	for i, it := range m.prj.items {
 		if i == m.itemIndex() {
 			cursorRow = row + metaHeight
 		}
+
+		// Iterate for as many weeks as the item is scheduled for
 		for w := range it.duration {
 
 			// Get the date of the first monday, and the week of the year
 			// TODO: Add start of week day to config.ini
-			weekStart := monday.AddDate(0, 0, row*7)
+			weekStart := monday.AddDate(0, 0, weekRow*7)
 			wsYear, week := weekStart.ISOWeek()
 
 			// If item is finished, stop after the week it was completed
+			sameWeekFinish := false
 			if !it.finished.IsZero() && weekStart.After(it.finished) {
-				break
+				if w == 0 {
+					// Multiple milestones finished in the same week:
+					// render a single collapsed row instead of skipping.
+					sameWeekFinish = true
+				} else {
+					break
+				}
 			}
 
 			// Assemble the date, MM.DD
 			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
 
-			leftSide := fmt.Sprintf("W%-3d %-5s ", week, date)
-
+			var leftSide string
 			rightStyle := normalStyle
 			leftStyle := fadeStyle
 			if i == m.itemIndex() {
 				rightStyle = selectedStyle
 				leftStyle = normalStyle
 			}
-			if wsYear == nowYear && week == nowWeek {
-				leftStyle = highlightedStyle
+
+			if sameWeekFinish {
+				leftSide = fmt.Sprintf("--+ %7s", "")
+			} else {
+				leftSide = fmt.Sprintf("W%-3d %-5s ", week, date)
+				if wsYear == nowYear && week == nowWeek {
+					leftStyle = highlightedStyle
+				}
 			}
+
 			var rightSide string
 
 			// Symbols: ✓ done, ⬤ first non-done after done, ◯ pending
@@ -451,6 +469,9 @@ func (m plannerViewModel) plannerView() string {
 
 			lines = append(lines, line)
 			row++
+			if !sameWeekFinish {
+				weekRow++
+			}
 		}
 	}
 
