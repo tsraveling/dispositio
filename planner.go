@@ -572,11 +572,12 @@ func (m plannerViewModel) plannerView() string {
 	// Grab only the chunk of them that are currently visible in the viewport,
 	// and then just display that.
 	viewHeight := cfg.wh
-	if viewHeight > 0 && len(lines) > viewHeight {
+	contentHeight := len(lines)
+	if viewHeight > 0 && contentHeight > viewHeight {
 		start := max(cursorRow-viewHeight/2, 0)
 		end := start + viewHeight
-		if end > len(lines) {
-			end = len(lines)
+		if end > contentHeight {
+			end = contentHeight
 			start = end - viewHeight
 		}
 		lines = lines[start:end]

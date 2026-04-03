@@ -16,3 +16,4 @@
 - [ ] Show first few subtasks if there's space in the item block on the roadmap view
 - [ ] Add breaks
 - [ ] Display project title somewhere
+- [ ] Add help modal
