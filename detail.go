@@ -345,11 +345,17 @@ func getBody(item *item, dv *detailViewModel, itemStart time.Time, isCurrent boo
 			itemStatus = fmt.Sprintf("%s\n\n%s\n%s", line1, line2, line3)
 		}
 	} else if item.finished.IsZero() {
+		endDate := itemStart.AddDate(0, 0, item.duration*7-1)
+		endStyle := dimStyle
+		if endDate.Before(time.Now()) {
+			endStyle = warningStyle
+		}
+		itemStatus = endStyle.Render("Due: " + fmtFullDate(endDate))
 		if isCurrent {
 			aw := item.actualWeeks(itemStart)
 			if aw > item.duration {
 				overdueStyle := lipgloss.NewStyle().Foreground(errorColor)
-				itemStatus = dimStyle.Render(fmt.Sprintf("Estimated: %dw", item.duration))
+				itemStatus += "\n" + dimStyle.Render(fmt.Sprintf("Estimated: %dw", item.duration))
 				itemStatus += "\n" + overdueStyle.Render(fmt.Sprintf("Actual: %dw", aw))
 			}
 		}

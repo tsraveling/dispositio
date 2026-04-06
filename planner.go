@@ -459,7 +459,7 @@ func (m plannerViewModel) plannerView() string {
 		lines = append(lines, "")
 
 		// Start date
-		label := "Project started: " + startDate.Format("Mon, Jan 2, 2006")
+		label := "Project started: " + fmtFullDate(startDate)
 		lines = append(lines, style.Render(label))
 		if m.isHoveringMeta() {
 			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))

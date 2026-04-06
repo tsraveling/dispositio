@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -28,12 +29,17 @@ var (
 
 	doneStyle        = lipgloss.NewStyle().Foreground(doneColor).Italic(true)
 	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
+	warningStyle     = lipgloss.NewStyle().Foreground(warningColor)
 	fadeStyle        = lipgloss.NewStyle().Foreground(fadeColor)
 	textStyle        = lipgloss.NewStyle().Foreground(textColor)
 	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
 	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
 	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(primaryColor)
 )
+
+func fmtFullDate(d time.Time) string {
+	return d.Format("Mon, Jan 2, 2006")
+}
 
 func detailStyle(w, h int, active bool) lipgloss.Style {
 	borderColor := dimColor
