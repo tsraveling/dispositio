@@ -346,12 +346,20 @@ func getBody(item *item, dv *detailViewModel, itemStart time.Time, isCurrent boo
 		}
 	} else if item.finished.IsZero() {
 		endDate := itemStart.AddDate(0, 0, item.duration*7-1)
+		daysUntil := int(time.Until(endDate).Hours() / 24)
 		endStyle := dimStyle
 		if endDate.Before(time.Now()) {
 			endStyle = warningStyle
 		}
 		itemStatus = endStyle.Render("Due: " + fmtFullDate(endDate))
 		if isCurrent {
+			dU := fmt.Sprintf("%dd", daysUntil)
+			if daysUntil == 0 {
+				dU = "Today"
+			} else if daysUntil < 0 {
+				dU = fmt.Sprintf("%d past", -daysUntil)
+			}
+			itemStatus += dimStyle.Render(fmt.Sprintf(" (%s)", dU))
 			aw := item.actualWeeks(itemStart)
 			if aw > item.duration {
 				overdueStyle := lipgloss.NewStyle().Foreground(errorColor)
