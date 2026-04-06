@@ -398,7 +398,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.prj.items[idx].duration++
 					m.prj.save()
 				}
-			case "esc", "ctrl+c":
+			case "ctrl+c", "q":
 				return m, tea.Quit
 			}
 		}
