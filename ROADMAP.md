@@ -8,7 +8,7 @@ Project Start: Feb 1 2026
 Finished: Feb 1 2026
 ```
 
-# Continuation (2)
+# Continuation
 ```
 Finished: Apr 6 2026
 ```

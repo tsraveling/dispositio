@@ -9,9 +9,11 @@
 - The "current week" logic, e.g. if an item needs to extend into a week, or the next item moves up into a week, is a bit unpredictable.
 - Fix left side padding on items column
 - Escape should commit otherwise vim users are going to die
+- After completing a few milestones early, Dis now shows my due date on my current milestone as one week later than it should be (end of first week of next milestone)
 
 ## IMPROVEMENTS
 
+- Add sub-subtasks; accordion view. Goal is to get entire project management moved in here.
 - Add the number of subtasks and icon for description on the right end of the items rows
 - If I hit 'a' and cancel, return cursor to previous location
 - When adding subtasks, enter to next one

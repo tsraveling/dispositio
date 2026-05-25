@@ -52,6 +52,26 @@ func (i *item) actualDuration(itemStart time.Time) int {
 	return max(i.duration, i.actualWeeks(itemStart))
 }
 
+// weeksRendered returns how many weeks this item occupies on the timeline,
+// matching the planner's row count. Completed items that finished early
+// occupy fewer weeks than planned; in-progress overruns extend. The week
+// containing the finished date is counted, so finishing on a Monday gives
+// the rest of that week as margin before the next item begins.
+func (i *item) weeksRendered(itemStart time.Time) int {
+	if i.finished.IsZero() {
+		return i.actualDuration(itemStart)
+	}
+	days := int(i.finished.Sub(itemStart).Hours() / 24)
+	if days < 0 {
+		return 1
+	}
+	weeks := days/7 + 1
+	if ad := i.actualDuration(itemStart); weeks > ad {
+		weeks = ad
+	}
+	return weeks
+}
+
 // isCurrent returns true if the item at idx is the first non-completed item
 // in the project — i.e. the one actively being worked on.
 func (p *project) isCurrent(idx int) bool {
@@ -76,7 +96,7 @@ func (p *project) itemStartDate(idx int) time.Time {
 			break
 		}
 		start := monday.AddDate(0, 0, weekRow*7)
-		weekRow += it.actualDuration(start)
+		weekRow += it.weeksRendered(start)
 	}
 	return monday.AddDate(0, 0, weekRow*7)
 }

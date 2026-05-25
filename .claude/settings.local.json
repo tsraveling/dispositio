@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Read(//Users/tsraveling/go/pkg/mod/github.com/charmbracelet/bubbles@v1.0.0/textarea/**)",
+      "Read(//Users/tsraveling/go/pkg/mod/github.com/charmbracelet/**)"
+    ]
+  }
+}
