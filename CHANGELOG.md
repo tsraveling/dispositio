@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.0 - 2026-06-23
+#### Features
+- subtasks (#2) - (6b02d64) - Tim Raveling
+#### Miscellaneous Chores
+- cog commit - (6a80830) - Tim Raveling
+
+- - -
+
 ## 0.1.0 - 2026-05-25
 #### Features
 - MVP (#1) - (95d13f2) - Tim Raveling
