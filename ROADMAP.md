@@ -10,8 +10,16 @@ Finished: Feb 1 2026
 
 # after test (7)
 
-- [ ] test
+- [x] test
+  - [ ] before
+  - [x] subtask
+  - [ ] subtask
+  - [x] subtask
+  - [ ] end
 - [ ] test2
+- [ ] test
+- [ ] end task
+  - [ ] subtask
 
 # asfasf (5)
 

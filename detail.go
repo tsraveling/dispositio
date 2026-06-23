@@ -24,8 +24,7 @@ const (
 	detailNormal detailMode = iota
 	detailEditingDesc
 	detailEditingTask
-	detailConfirmingDelete
-	detailChangingCompletion
+	detailConfirming
 )
 
 var (
@@ -37,12 +36,14 @@ type detailViewModel struct {
 	item             *milestone
 	itemStart        time.Time
 	isCurrent        bool
-	taskCursor       int
+	taskCursor       int // index into item.tasks
+	subCursor        int // index into the task's subtasks, or -1 when on the task itself
 	mode             detailMode
+	confirm          confirm
 	textarea         textarea.Model
 	input            textinput.Model
-	preEditTitle     string // original task title for esc revert
-	isNewTask        bool   // true when editing a newly added task
+	preEditTitle     string // original title for esc revert
+	isNewTask        bool   // true when editing a freshly inserted task/subtask
 	panelWidth       int
 	completionYesIdx int
 	completionNoIdx  int
@@ -61,23 +62,145 @@ func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isC
 	ti.Placeholder = "Task title..."
 	ti.CharLimit = 120
 
-	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
+	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
 }
 
-// insertTaskAt inserts a new empty task at the given index and enters editing mode.
+// true on task row, false on subtask.
+func (d *detailViewModel) onTask() bool { return d.subCursor < 0 }
+
+// navigable row: a task (sub == -1) or one of its subtasks.
+type rowRef struct {
+	task int
+	sub  int
+}
+
+// all tasks + all subtasks on open tasks, in a flat list.
+func (d *detailViewModel) flatRows() []rowRef {
+	var rows []rowRef
+	for ti := range d.item.tasks {
+		rows = append(rows, rowRef{ti, -1})
+		if d.item.tasks[ti].open {
+			for si := range d.item.tasks[ti].subtasks {
+				rows = append(rows, rowRef{ti, si})
+			}
+		}
+	}
+	return rows
+}
+
+// steps cursor through the flattened task/subtask list.
+func (d *detailViewModel) moveCursor(delta int) {
+	rows := d.flatRows()
+	if len(rows) == 0 {
+		d.taskCursor = 0
+		d.subCursor = -1
+		return
+	}
+	cur := 0
+	for i, r := range rows {
+		if r.task == d.taskCursor && r.sub == d.subCursor {
+			cur = i
+			break
+		}
+	}
+	cur = max(0, min(cur+delta, len(rows)-1))
+	d.taskCursor = rows[cur].task
+	d.subCursor = rows[cur].sub
+}
+
+// returns the title at the cursor (task or subtask).
+func (d *detailViewModel) curTitle() string {
+	if d.subCursor >= 0 {
+		return d.item.tasks[d.taskCursor].subtasks[d.subCursor].title
+	}
+	return d.item.tasks[d.taskCursor].title
+}
+
+// writes the title at the cursor (task or subtask).
+func (d *detailViewModel) setCurTitle(s string) {
+	if d.subCursor >= 0 {
+		d.item.tasks[d.taskCursor].subtasks[d.subCursor].title = s
+	} else {
+		d.item.tasks[d.taskCursor].title = s
+	}
+}
+
+// removes the task or subtask at the cursor and fixes the cursor.
+func (d *detailViewModel) deleteCurrent() {
+	if d.subCursor >= 0 {
+		t := &d.item.tasks[d.taskCursor]
+		si := d.subCursor
+		t.subtasks = append(t.subtasks[:si], t.subtasks[si+1:]...)
+		if d.subCursor >= len(t.subtasks) {
+			d.subCursor = len(t.subtasks) - 1 // -1 falls back onto the task row
+		}
+	} else {
+		idx := d.taskCursor
+		d.item.tasks = append(d.item.tasks[:idx], d.item.tasks[idx+1:]...)
+		if d.taskCursor >= len(d.item.tasks) && d.taskCursor > 0 {
+			d.taskCursor--
+		}
+	}
+}
+
+// inserts a new empty task at the given index and enters editing mode.
 func (d *detailViewModel) insertTaskAt(idx int) tea.Cmd {
 	idx = max(0, min(idx, len(d.item.tasks)))
+	d.item.tasks = append(d.item.tasks, task{})
+	copy(d.item.tasks[idx+1:], d.item.tasks[idx:])
+	d.item.tasks[idx] = task{}
+	d.taskCursor = idx
+	d.subCursor = -1
+	d.startEditingNew()
+	return textinput.Blink
+}
+
+// inserts a new empty subtask into taskIdx at subIdx, opening
+// the task, and enters editing mode.
+func (d *detailViewModel) insertSubtaskAt(taskIdx, subIdx int) tea.Cmd {
+	t := &d.item.tasks[taskIdx]
+	t.open = true
+	subIdx = max(0, min(subIdx, len(t.subtasks)))
+	t.subtasks = append(t.subtasks, subtask{})
+	copy(t.subtasks[subIdx+1:], t.subtasks[subIdx:])
+	t.subtasks[subIdx] = subtask{}
+	d.taskCursor = taskIdx
+	d.subCursor = subIdx
+	d.startEditingNew()
+	return textinput.Blink
+}
+
+// startEditingNew puts the input into edit mode for a freshly inserted row.
+func (d *detailViewModel) startEditingNew() {
 	d.preEditTitle = ""
 	d.isNewTask = true
 	d.mode = detailEditingTask
 	d.input.SetValue("")
 	d.input.Focus()
-	newTask := task{}
-	d.item.tasks = append(d.item.tasks, task{})
-	copy(d.item.tasks[idx+1:], d.item.tasks[idx:])
-	d.item.tasks[idx] = newTask
-	d.taskCursor = idx
-	return textinput.Blink
+}
+
+// runs the action backing the active confirm dialog.
+func (d *detailViewModel) applyConfirm() tea.Cmd {
+	switch d.confirm.kind {
+	case confirmDeleteItem:
+		d.deleteCurrent()
+		return func() tea.Msg { return detailSaveMsg{} }
+	case confirmToggleCompletion:
+		if d.item.finished.IsZero() {
+			d.item.finished = time.Now()
+			return func() tea.Msg { return detailItemCompletedMsg{} }
+		}
+		d.item.finished = time.Time{}
+		return func() tea.Msg { return detailItemUncompletedMsg{} }
+	case confirmCompleteSubtasks:
+		t := &d.item.tasks[d.taskCursor]
+		t.completed = true
+		for i := range t.subtasks {
+			t.subtasks[i].completed = true
+		}
+		return func() tea.Msg { return detailSaveMsg{} }
+	}
+	return nil
 }
 
 func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
@@ -103,24 +226,21 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.textarea, cmd = d.textarea.Update(msg)
 		return d, cmd
 
-	// Editing a task title (add or rename)
+	// Editing a task or subtask title (add or rename)
 	case detailEditingTask:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
 			case "enter":
-				d.item.tasks[d.taskCursor].title = d.input.Value()
+				d.setCurTitle(d.input.Value())
 				d.mode = detailNormal
 				d.input.Blur()
 				return d, func() tea.Msg { return detailSaveMsg{} }
 			case "esc":
 				d.mode = detailNormal
 				d.input.Blur()
-				d.item.tasks[d.taskCursor].title = d.preEditTitle
+				d.setCurTitle(d.preEditTitle)
 				if d.isNewTask {
-					d.item.tasks = append(d.item.tasks[:d.taskCursor], d.item.tasks[d.taskCursor+1:]...)
-					if d.taskCursor >= len(d.item.tasks) && d.taskCursor > 0 {
-						d.taskCursor--
-					}
+					d.deleteCurrent()
 				}
 				return d, nil
 			}
@@ -129,52 +249,42 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.input, cmd = d.input.Update(msg)
 		return d, cmd
 
-	// Confirming task deletion
-	case detailConfirmingDelete:
-		if msg, ok := msg.(tea.KeyMsg); ok {
-			switch msg.String() {
-			case "y":
-				idx := d.taskCursor
-				d.item.tasks = append(d.item.tasks[:idx], d.item.tasks[idx+1:]...)
-				if d.taskCursor >= len(d.item.tasks) && d.taskCursor > 0 {
-					d.taskCursor--
-				}
-				d.mode = detailNormal
-				return d, func() tea.Msg { return detailSaveMsg{} }
-			case "n", "esc":
-				d.mode = detailNormal
-				return d, nil
-			}
-		}
-		return d, nil
-
-	// Changing completion status
-	case detailChangingCompletion:
-		if msg, ok := msg.(tea.KeyMsg); ok {
-			switch msg.String() {
-			case "y":
-				if d.item.finished.IsZero() {
-					d.item.finished = time.Now()
-					d.mode = detailNormal
-					return d, func() tea.Msg { return detailItemCompletedMsg{} }
-				}
-				d.item.finished = time.Time{}
-				d.mode = detailNormal
-				return d, func() tea.Msg { return detailItemUncompletedMsg{} }
-			case "n", "esc":
-				d.mode = detailNormal
-				return d, nil
-			}
+	// Resolving a confirm dialog (delete, completion, complete-subtasks)
+	case detailConfirming:
+		switch d.confirm.handle(msg) {
+		case confirmYes:
+			cmd := d.applyConfirm()
+			d.mode = detailNormal
+			d.confirm = confirm{}
+			return d, cmd
+		case confirmNo:
+			d.mode = detailNormal
+			d.confirm = confirm{}
+			return d, nil
 		}
 		return d, nil
 
 	// Normal detail navigation
 	case detailNormal:
 		if msg, ok := msg.(tea.KeyMsg); ok {
-			maxTask := len(d.item.tasks) - 1
 			switch msg.String() {
-			case "esc", "left", "h":
+			case "esc":
 				return d, func() tea.Msg { return detailCloseMsg{} }
+			case "left", "h":
+				// On a subtask: close the parent task and return to it.
+				// On a task: leave the detail panel.
+				if !d.onTask() {
+					d.item.tasks[d.taskCursor].open = false
+					d.subCursor = -1
+					return d, nil
+				}
+				return d, func() tea.Msg { return detailCloseMsg{} }
+			case "right", "l":
+				// On a task with subtasks: open it and drop onto the first subtask.
+				if d.onTask() && len(d.item.tasks) > 0 && len(d.item.tasks[d.taskCursor].subtasks) > 0 {
+					d.item.tasks[d.taskCursor].open = true
+					d.subCursor = 0
+				}
 			case "enter":
 				d.mode = detailEditingDesc
 				d.textarea.SetValue(d.item.description)
@@ -182,71 +292,149 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 				cmd := d.textarea.Focus()
 				return d, cmd
 			case "up", "k":
-				if d.taskCursor > 0 {
-					d.taskCursor--
-				}
+				d.moveCursor(-1)
 			case "down", "j":
-				if d.taskCursor < maxTask {
-					d.taskCursor++
-				}
+				d.moveCursor(1)
 			case "shift+up", "K":
-				idx := d.taskCursor
-				if idx > 0 {
-					d.item.tasks[idx], d.item.tasks[idx-1] = d.item.tasks[idx-1], d.item.tasks[idx]
-					d.taskCursor--
-					return d, func() tea.Msg { return detailSaveMsg{} }
+				if !d.onTask() {
+					si := d.subCursor
+					if si > 0 {
+						subs := d.item.tasks[d.taskCursor].subtasks
+						subs[si], subs[si-1] = subs[si-1], subs[si]
+						d.subCursor--
+						return d, func() tea.Msg { return detailSaveMsg{} }
+					}
+				} else {
+					idx := d.taskCursor
+					if idx > 0 {
+						d.item.tasks[idx], d.item.tasks[idx-1] = d.item.tasks[idx-1], d.item.tasks[idx]
+						d.taskCursor--
+						return d, func() tea.Msg { return detailSaveMsg{} }
+					}
 				}
 			case "shift+down", "J":
-				idx := d.taskCursor
-				if idx < maxTask {
-					d.item.tasks[idx], d.item.tasks[idx+1] = d.item.tasks[idx+1], d.item.tasks[idx]
-					d.taskCursor++
+				if !d.onTask() {
+					si := d.subCursor
+					subs := d.item.tasks[d.taskCursor].subtasks
+					if si < len(subs)-1 {
+						subs[si], subs[si+1] = subs[si+1], subs[si]
+						d.subCursor++
+						return d, func() tea.Msg { return detailSaveMsg{} }
+					}
+				} else {
+					idx := d.taskCursor
+					if idx < len(d.item.tasks)-1 {
+						d.item.tasks[idx], d.item.tasks[idx+1] = d.item.tasks[idx+1], d.item.tasks[idx]
+						d.taskCursor++
+						return d, func() tea.Msg { return detailSaveMsg{} }
+					}
+				}
+			case "shift+left", "H":
+				// Promote a subtask to a task immediately below its parent.
+				if !d.onTask() {
+					ti := d.taskCursor
+					si := d.subCursor
+					t := &d.item.tasks[ti]
+					st := t.subtasks[si]
+					t.subtasks = append(t.subtasks[:si], t.subtasks[si+1:]...)
+					newTask := task{title: st.title, completed: st.completed}
+					at := ti + 1
+					d.item.tasks = append(d.item.tasks, task{})
+					copy(d.item.tasks[at+1:], d.item.tasks[at:])
+					d.item.tasks[at] = newTask
+					d.taskCursor = at
+					d.subCursor = -1
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
-			case " ":
-				idx := d.taskCursor
-				if len(d.item.tasks) > idx {
-					d.item.tasks[idx].completed = !d.item.tasks[idx].completed
+			case "shift+right", "L":
+				// Demote a childless task into a subtask of the task above it.
+				if d.onTask() && len(d.item.tasks) > 0 {
+					ti := d.taskCursor
+					if ti == 0 || len(d.item.tasks[ti].subtasks) > 0 {
+						break
+					}
+					cur := d.item.tasks[ti]
+					above := &d.item.tasks[ti-1]
+					above.open = true
+					above.subtasks = append(above.subtasks, subtask{title: cur.title, completed: cur.completed})
+					d.item.tasks = append(d.item.tasks[:ti], d.item.tasks[ti+1:]...)
+					d.taskCursor = ti - 1
+					d.subCursor = len(d.item.tasks[ti-1].subtasks) - 1
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
+			case " ", "x":
+				if len(d.item.tasks) == 0 {
+					break
+				}
+				if !d.onTask() {
+					st := &d.item.tasks[d.taskCursor].subtasks[d.subCursor]
+					st.completed = !st.completed
+					return d, func() tea.Msg { return detailSaveMsg{} }
+				}
+				t := &d.item.tasks[d.taskCursor]
+				// Completing a task with unfinished subtasks asks first.
+				if !t.completed && len(t.subtasks) > 0 && !t.allSubtasksDone() {
+					prompt := fmt.Sprintf("Complete %d subtasks?", t.incompleteSubtasks())
+					d.confirm = newConfirm(confirmCompleteSubtasks, prompt)
+					d.mode = detailConfirming
+					return d, nil
+				}
+				t.completed = !t.completed
+				return d, func() tea.Msg { return detailSaveMsg{} }
 			case "e":
 				if len(d.item.tasks) > 0 {
-					d.preEditTitle = d.item.tasks[d.taskCursor].title
+					d.preEditTitle = d.curTitle()
 					d.isNewTask = false
 					d.mode = detailEditingTask
-					d.input.SetValue(d.item.tasks[d.taskCursor].title)
+					d.input.SetValue(d.curTitle())
 					d.input.CursorEnd()
 					d.input.Focus()
 					return d, textinput.Blink
 				}
 			case "d":
 				if len(d.item.tasks) > 0 {
-					d.mode = detailConfirmingDelete
+					prompt := "Delete?"
+					if d.onTask() {
+						if n := len(d.item.tasks[d.taskCursor].subtasks); n > 0 {
+							prompt = fmt.Sprintf("delete w/ %d children?", n)
+						}
+					}
+					d.confirm = newConfirm(confirmDeleteItem, prompt)
+					d.mode = detailConfirming
 				}
 			case "a":
+				if !d.onTask() {
+					return d, d.insertSubtaskAt(d.taskCursor, len(d.item.tasks[d.taskCursor].subtasks))
+				}
 				return d, d.insertTaskAt(len(d.item.tasks))
+			case "A":
+				if d.onTask() {
+					return d, d.insertSubtaskAt(d.taskCursor, 0)
+				}
 			case "o":
+				if !d.onTask() {
+					return d, d.insertSubtaskAt(d.taskCursor, d.subCursor+1)
+				}
 				idx := d.taskCursor + 1
 				if len(d.item.tasks) == 0 {
 					idx = 0
 				}
 				return d, d.insertTaskAt(idx)
 			case "O":
+				if !d.onTask() {
+					return d, d.insertSubtaskAt(d.taskCursor, d.subCursor)
+				}
 				idx := d.taskCursor
 				if len(d.item.tasks) == 0 {
 					idx = 0
 				}
 				return d, d.insertTaskAt(idx)
 			case "c":
-				d.mode = detailChangingCompletion
+				d.confirm = newConfirm(confirmToggleCompletion, "")
 				d.completionYesIdx = rand.Intn(len(completionYes))
 				d.completionNoIdx = rand.Intn(len(completionNo))
+				d.mode = detailConfirming
 				return d, nil
-			case "x":
-				if len(d.item.tasks) > 0 {
-					d.item.tasks[d.taskCursor].completed = !d.item.tasks[d.taskCursor].completed
-					return d, func() tea.Msg { return detailSaveMsg{} }
-				}
 			case "-":
 				if !d.item.finished.IsZero() {
 					d.item.finished = d.item.finished.AddDate(0, 0, -1)
@@ -289,7 +477,43 @@ func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurren
 
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
-	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+	confirmStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+
+	// checkbox renders the "- [ ] " / "- [x] " prefix in the right style.
+	checkbox := func(completed, selected bool) string {
+		box := "- [ ] "
+		if completed {
+			box = "- [x] "
+		}
+		switch {
+		case selected:
+			return selectedStyle.Render(box)
+		case completed:
+			return dimStyle.Render(box)
+		default:
+			return primaryStyle.Render(box)
+		}
+	}
+
+	// titleCell renders the title, or the inline edit/confirm widget when the
+	// cursor is on this row.
+	titleCell := func(t string, completed, selected bool, ti, si int) string {
+		if active && selected && dv.mode == detailConfirming &&
+			(dv.confirm.kind == confirmDeleteItem || dv.confirm.kind == confirmCompleteSubtasks) {
+			return confirmStyle.Render(dv.confirm.prompt + " y/n")
+		}
+		if active && dv.mode == detailEditingTask && dv.taskCursor == ti && dv.subCursor == si {
+			return dv.input.View()
+		}
+		switch {
+		case selected:
+			return selectedStyle.Render(t)
+		case completed:
+			return dimStyle.Italic(true).Render(t)
+		default:
+			return normalStyle.Render(t)
+		}
+	}
 
 	var b strings.Builder
 	if len(item.tasks) == 0 {
@@ -298,44 +522,40 @@ func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurren
 			b.WriteString("\n")
 		}
 	} else {
-		for i, task := range item.tasks {
-			isSelected := active && i == dv.taskCursor
+		for ti := range item.tasks {
+			t := &item.tasks[ti]
+			taskSelected := active && dv.taskCursor == ti && dv.subCursor == -1
 
-			// Checkbox prefix
-			if task.completed {
-				if isSelected {
-					b.WriteString(selectedStyle.Render("- [x] "))
+			b.WriteString(checkbox(t.completed, taskSelected))
+
+			// Subtask count decoration: dim when closed, active when open.
+			if len(t.subtasks) > 0 {
+				count := fmt.Sprintf("(%d/%d) ", t.completedSubtasks(), len(t.subtasks))
+				if t.open {
+					b.WriteString(primaryStyle.Render(count))
 				} else {
-					b.WriteString(dimStyle.Render("- [x] "))
-				}
-			} else {
-				if isSelected {
-					b.WriteString(selectedStyle.Render("- [ ] "))
-				} else {
-					b.WriteString(primaryStyle.Render("- [ ] "))
+					b.WriteString(dimStyle.Render(count))
 				}
 			}
 
-			// Title
-			if active && dv.mode == detailConfirmingDelete && isSelected {
-				b.WriteString(deleteStyle.Render("Delete? y/n"))
-			} else if active && dv.mode == detailEditingTask && i == dv.taskCursor {
-				b.WriteString(dv.input.View())
-			} else if isSelected {
-				b.WriteString(selectedStyle.Render(task.title))
-			} else if task.completed {
-				b.WriteString(dimStyle.Italic(true).Render(task.title))
-			} else {
-				b.WriteString(normalStyle.Render(task.title))
-			}
+			b.WriteString(titleCell(t.title, t.completed, taskSelected, ti, -1))
 			b.WriteString("\n")
+
+			if t.open {
+				for si := range t.subtasks {
+					st := &t.subtasks[si]
+					subSelected := active && dv.taskCursor == ti && dv.subCursor == si
+					b.WriteString("  ")
+					b.WriteString(checkbox(st.completed, subSelected))
+					b.WriteString(titleCell(st.title, st.completed, subSelected, ti, si))
+					b.WriteString("\n")
+				}
+			}
 		}
 	}
 
-	confirmStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
-
 	itemStatus := ""
-	if active && dv.mode == detailChangingCompletion {
+	if active && dv.mode == detailConfirming && dv.confirm.kind == confirmToggleCompletion {
 		if !item.finished.IsZero() {
 			itemStatus = confirmStyle.Render("Unmark complete? y/n")
 		} else {

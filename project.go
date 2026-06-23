@@ -18,6 +18,34 @@ type task struct {
 	title     string
 	completed bool
 	subtasks  []subtask
+	open      bool // ui only
+}
+
+// allSubtasksDone reports whether every subtask is completed. A task with no
+// subtasks is trivially done.
+func (t task) allSubtasksDone() bool {
+	for _, st := range t.subtasks {
+		if !st.completed {
+			return false
+		}
+	}
+	return true
+}
+
+// completedSubtasks returns the number of completed subtasks.
+func (t task) completedSubtasks() int {
+	n := 0
+	for _, st := range t.subtasks {
+		if st.completed {
+			n++
+		}
+	}
+	return n
+}
+
+// incompleteSubtasks returns the number of subtasks not yet completed.
+func (t task) incompleteSubtasks() int {
+	return len(t.subtasks) - t.completedSubtasks()
 }
 
 type milestone struct {
