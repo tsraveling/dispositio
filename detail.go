@@ -34,7 +34,7 @@ var (
 )
 
 type detailViewModel struct {
-	item             *item
+	item             *milestone
 	itemStart        time.Time
 	isCurrent        bool
 	taskCursor       int
@@ -48,7 +48,7 @@ type detailViewModel struct {
 	completionNoIdx  int
 }
 
-func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time, isCurrent bool) detailViewModel {
+func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isCurrent bool) detailViewModel {
 	ta := textarea.New()
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = true
@@ -58,7 +58,7 @@ func makeDetailViewModel(it *item, panelWidth int, itemStart time.Time, isCurren
 	ta.SetWidth(max(10, panelWidth-6))
 
 	ti := textinput.New()
-	ti.Placeholder = "Subtask title..."
+	ti.Placeholder = "Task title..."
 	ti.CharLimit = 120
 
 	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
@@ -72,8 +72,8 @@ func (d *detailViewModel) insertSubtaskAt(idx int) tea.Cmd {
 	d.mode = detailEditingTask
 	d.input.SetValue("")
 	d.input.Focus()
-	newTask := subtask{}
-	d.item.subtasks = append(d.item.subtasks, subtask{})
+	newTask := task{}
+	d.item.subtasks = append(d.item.subtasks, task{})
 	copy(d.item.subtasks[idx+1:], d.item.subtasks[idx:])
 	d.item.subtasks[idx] = newTask
 	d.taskCursor = idx
@@ -274,7 +274,7 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	return d, nil
 }
 
-func getBody(item *item, dv *detailViewModel, itemStart time.Time, isCurrent bool) string {
+func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurrent bool) string {
 	title := titleStyle.Render(item.title)
 	active := dv != nil
 
@@ -396,7 +396,7 @@ func (d *detailViewModel) View(w, h int) string {
 	return detailStyle(w, h, true).Render(body)
 }
 
-func detailViewInactive(it *item, w, h int, itemStart time.Time, isCurrent bool) string {
+func detailViewInactive(it *milestone, w, h int, itemStart time.Time, isCurrent bool) string {
 	if it == nil {
 		return ""
 	}

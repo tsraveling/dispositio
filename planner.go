@@ -90,14 +90,14 @@ func (m *plannerViewModel) gotoDetail() {
 // insertItemAt inserts a new empty item at the given index in prj.items
 // and enters editing mode.
 func (m *plannerViewModel) insertItemAt(idx int) tea.Cmd {
-	newItem := item{title: "", duration: 1}
+	newItem := milestone{title: "", duration: 1}
 
 	if len(m.prj.items) == 0 {
-		m.prj.items = []item{newItem}
+		m.prj.items = []milestone{newItem}
 		idx = 0
 	} else {
 		idx = max(0, min(idx, len(m.prj.items)))
-		m.prj.items = append(m.prj.items, item{})
+		m.prj.items = append(m.prj.items, milestone{})
 		copy(m.prj.items[idx+1:], m.prj.items[idx:])
 		m.prj.items[idx] = newItem
 	}
@@ -157,7 +157,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if activeIdx >= 0 && completedIdx > activeIdx {
 				completed := m.prj.items[completedIdx]
 				m.prj.items = append(m.prj.items[:completedIdx], m.prj.items[completedIdx+1:]...)
-				m.prj.items = append(m.prj.items[:activeIdx], append([]item{completed}, m.prj.items[activeIdx:]...)...)
+				m.prj.items = append(m.prj.items[:activeIdx], append([]milestone{completed}, m.prj.items[activeIdx:]...)...)
 				m.cursor = activeIdx + 1 // cursor-space
 			}
 		}
@@ -192,7 +192,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if lastFinishedIdx > uncompletedIdx {
 				uncompleted := m.prj.items[uncompletedIdx]
 				m.prj.items = append(m.prj.items[:uncompletedIdx], m.prj.items[uncompletedIdx+1:]...)
-				m.prj.items = append(m.prj.items[:lastFinishedIdx], append([]item{uncompleted}, m.prj.items[lastFinishedIdx:]...)...)
+				m.prj.items = append(m.prj.items[:lastFinishedIdx], append([]milestone{uncompleted}, m.prj.items[lastFinishedIdx:]...)...)
 				m.cursor = lastFinishedIdx + 1 // cursor-space
 			}
 		}
@@ -604,7 +604,7 @@ func (m plannerViewModel) View() string {
 		if m.detail != nil {
 			detailCol = m.detail.View(detailWidth, cfg.wh)
 		} else {
-			var it *item
+			var it *milestone
 			var itemStart time.Time
 			var isCurrent bool
 			if !m.onMeta() {

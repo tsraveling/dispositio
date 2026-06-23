@@ -1,6 +1,6 @@
 ```
 Project Name: Dispositio
-Project Start: Feb 1 2026
+Project Start: Jun 8 2026
 ```
 
 # Start! (2)
@@ -8,26 +8,10 @@ Project Start: Feb 1 2026
 Finished: Feb 1 2026
 ```
 
-# Continuation
-```
-Finished: Apr 6 2026
-```
-
-- [ ] test!
-- [ ] test
-
-# Balls (3)
-
-# before test (5)
-
-- [ ] something here
-- [ ] before
-- [ ] another
-- [ ] after another!
-- [ ] another
-- [ ] at end
-
 # after test (7)
+
+- [ ] test
+- [ ] test2
 
 # asfasf (5)
 
