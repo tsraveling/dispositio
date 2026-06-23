@@ -546,6 +546,11 @@ func (m plannerViewModel) plannerView() string {
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
 					rightSide = rightStyle.Render(symbol+"  ") + deleteStyle.Render("Delete? y/n")
+				} else if m.detail != nil && &m.prj.items[i] == m.detail.item {
+					// IF OPEN IN DETAIL: Show a long arrow instead of the title.
+					arrowLen := max(2, panelWidth-len(leftSide)-3)
+					arrow := strings.Repeat("-", arrowLen-1) + ">"
+					rightSide = rightStyle.Render(symbol + "  " + arrow)
 				} else {
 					// Otherwise just show the normal title.
 					dateStr := ""

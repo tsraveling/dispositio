@@ -50,8 +50,9 @@ func detailStyle(w, h int, active bool) lipgloss.Style {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Padding(1, 2).
+		MarginTop(1).
 		Width(w - 2).
-		Height(h - 2)
+		Height(h - 3)
 }
 
 func boxWidth(termWidth int) int {
