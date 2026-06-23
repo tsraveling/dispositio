@@ -62,7 +62,7 @@ func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isC
 
 	ti := textinput.New()
 	ti.Placeholder = "Task title..."
-	ti.CharLimit = 120
+	ti.CharLimit = 0
 
 	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
 }

@@ -50,7 +50,7 @@ func (m *plannerViewModel) isHoveringMeta() bool {
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti := textinput.New()
 	ti.Placeholder = "Item title..."
-	ti.CharLimit = 120
+	ti.CharLimit = 0
 
 	// Copy project into value mode so we can mutate it bubbletea-style
 	m := plannerViewModel{prj: *p, input: ti, mode: normal}
