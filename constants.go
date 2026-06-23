@@ -1,5 +1,5 @@
 package main
 
 const (
-	minSideBySideWidth = 80
+	minSideBySideWidth = 100
 )

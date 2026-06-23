@@ -8,7 +8,7 @@ Project Start: Jun 8 2026
 Finished: Feb 1 2026
 ```
 
-# after test (7)
+# after test (3)
 
 - [x] test
   - [ ] before
@@ -16,10 +16,22 @@ Finished: Feb 1 2026
   - [ ] subtask
   - [x] subtask
   - [ ] end
-- [ ] test2
+- [x] test2
+- [x] test
+- [x] end task
+  - [x] subtask
+  - [x] test
+- [ ] another
+- [x] one
+- [x] two
+- [x] three
+- [x] four
+- [x] five
 - [ ] test
-- [ ] end task
-  - [ ] subtask
+- [ ] o
+- [ ] b
+- [ ] ten
+- [ ] eleven
 
 # asfasf (5)
 

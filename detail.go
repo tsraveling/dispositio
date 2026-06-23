@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -462,7 +463,17 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	return d, nil
 }
 
-func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurrent bool) string {
+func renderProgressBar(width int, ratio float64, active bool) string {
+	opts := []progress.Option{progress.WithWidth(width)}
+	if active {
+		opts = append(opts, progress.WithScaledGradient("#7d3483", "#ff5fd7")) // darker purple -> primary (206)
+	} else {
+		opts = append(opts, progress.WithSolidFill("#767676")) // dim gray (243)
+	}
+	return progress.New(opts...).ViewAs(ratio)
+}
+
+func getBody(item *milestone, dv *detailViewModel, width int, itemStart time.Time, isCurrent bool) string {
 	title := titleStyle.Render(item.title)
 	active := dv != nil
 
@@ -608,11 +619,44 @@ func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurren
 		}
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s\n\n%s", title, desc, b.String(), itemStatus)
+	// Progress block: shown between the description and the task list when the
+	// item has tasks and is not yet complete.
+	var progressBlock string
+	if len(item.tasks) > 0 && item.finished.IsZero() {
+		done := 0
+		for i := range item.tasks {
+			if item.tasks[i].completed {
+				done++
+			}
+		}
+		incomplete := len(item.tasks) - done
+		bar := renderProgressBar(max(10, width-6), float64(done)/float64(len(item.tasks)), active)
+
+		var rate string
+		if incomplete == 0 {
+			rate = dimStyle.Render("All subtasks complete!")
+		} else {
+			endDate := itemStart.AddDate(0, 0, item.duration*7-1)
+			daysLeft := int(time.Until(endDate).Hours() / 24)
+			if daysLeft < 1 {
+				daysLeft = 1
+			}
+			perDay := float64(incomplete) / float64(daysLeft)
+			rate = dimStyle.Render(fmt.Sprintf("On track: %.1f tasks per day", perDay))
+		}
+		progressBlock = bar + "\n" + rate
+	}
+
+	body := fmt.Sprintf("%s\n\n%s", title, desc)
+	if progressBlock != "" {
+		body += "\n\n" + progressBlock
+	}
+	body += fmt.Sprintf("\n\n%s\n\n%s", b.String(), itemStatus)
+	return body
 }
 
 func (d *detailViewModel) View(w, h int) string {
-	body := getBody(d.item, d, d.itemStart, d.isCurrent)
+	body := getBody(d.item, d, w, d.itemStart, d.isCurrent)
 	return detailStyle(w, h, true).Render(body)
 }
 
@@ -620,6 +664,6 @@ func detailViewInactive(it *milestone, w, h int, itemStart time.Time, isCurrent 
 	if it == nil {
 		return ""
 	}
-	body := getBody(it, nil, itemStart, isCurrent)
+	body := getBody(it, nil, w, itemStart, isCurrent)
 	return detailStyle(w, h, false).Render(body)
 }
