@@ -41,8 +41,8 @@ type detailViewModel struct {
 	mode             detailMode
 	textarea         textarea.Model
 	input            textinput.Model
-	preEditTitle     string // original subtask title for esc revert
-	isNewSubtask     bool   // true when editing a newly added subtask
+	preEditTitle     string // original task title for esc revert
+	isNewTask        bool   // true when editing a newly added task
 	panelWidth       int
 	completionYesIdx int
 	completionNoIdx  int
@@ -64,18 +64,18 @@ func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isC
 	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, textarea: ta, input: ti, panelWidth: panelWidth}
 }
 
-// insertSubtaskAt inserts a new empty subtask at the given index and enters editing mode.
-func (d *detailViewModel) insertSubtaskAt(idx int) tea.Cmd {
-	idx = max(0, min(idx, len(d.item.subtasks)))
+// insertTaskAt inserts a new empty task at the given index and enters editing mode.
+func (d *detailViewModel) insertTaskAt(idx int) tea.Cmd {
+	idx = max(0, min(idx, len(d.item.tasks)))
 	d.preEditTitle = ""
-	d.isNewSubtask = true
+	d.isNewTask = true
 	d.mode = detailEditingTask
 	d.input.SetValue("")
 	d.input.Focus()
 	newTask := task{}
-	d.item.subtasks = append(d.item.subtasks, task{})
-	copy(d.item.subtasks[idx+1:], d.item.subtasks[idx:])
-	d.item.subtasks[idx] = newTask
+	d.item.tasks = append(d.item.tasks, task{})
+	copy(d.item.tasks[idx+1:], d.item.tasks[idx:])
+	d.item.tasks[idx] = newTask
 	d.taskCursor = idx
 	return textinput.Blink
 }
@@ -103,22 +103,22 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.textarea, cmd = d.textarea.Update(msg)
 		return d, cmd
 
-	// Editing a subtask title (add or rename)
+	// Editing a task title (add or rename)
 	case detailEditingTask:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
 			case "enter":
-				d.item.subtasks[d.taskCursor].title = d.input.Value()
+				d.item.tasks[d.taskCursor].title = d.input.Value()
 				d.mode = detailNormal
 				d.input.Blur()
 				return d, func() tea.Msg { return detailSaveMsg{} }
 			case "esc":
 				d.mode = detailNormal
 				d.input.Blur()
-				d.item.subtasks[d.taskCursor].title = d.preEditTitle
-				if d.isNewSubtask {
-					d.item.subtasks = append(d.item.subtasks[:d.taskCursor], d.item.subtasks[d.taskCursor+1:]...)
-					if d.taskCursor >= len(d.item.subtasks) && d.taskCursor > 0 {
+				d.item.tasks[d.taskCursor].title = d.preEditTitle
+				if d.isNewTask {
+					d.item.tasks = append(d.item.tasks[:d.taskCursor], d.item.tasks[d.taskCursor+1:]...)
+					if d.taskCursor >= len(d.item.tasks) && d.taskCursor > 0 {
 						d.taskCursor--
 					}
 				}
@@ -129,14 +129,14 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.input, cmd = d.input.Update(msg)
 		return d, cmd
 
-	// Confirming subtask deletion
+	// Confirming task deletion
 	case detailConfirmingDelete:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
 			case "y":
 				idx := d.taskCursor
-				d.item.subtasks = append(d.item.subtasks[:idx], d.item.subtasks[idx+1:]...)
-				if d.taskCursor >= len(d.item.subtasks) && d.taskCursor > 0 {
+				d.item.tasks = append(d.item.tasks[:idx], d.item.tasks[idx+1:]...)
+				if d.taskCursor >= len(d.item.tasks) && d.taskCursor > 0 {
 					d.taskCursor--
 				}
 				d.mode = detailNormal
@@ -171,7 +171,7 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	// Normal detail navigation
 	case detailNormal:
 		if msg, ok := msg.(tea.KeyMsg); ok {
-			maxTask := len(d.item.subtasks) - 1
+			maxTask := len(d.item.tasks) - 1
 			switch msg.String() {
 			case "esc", "left", "h":
 				return d, func() tea.Msg { return detailCloseMsg{} }
@@ -192,59 +192,59 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 			case "shift+up", "K":
 				idx := d.taskCursor
 				if idx > 0 {
-					d.item.subtasks[idx], d.item.subtasks[idx-1] = d.item.subtasks[idx-1], d.item.subtasks[idx]
+					d.item.tasks[idx], d.item.tasks[idx-1] = d.item.tasks[idx-1], d.item.tasks[idx]
 					d.taskCursor--
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
 			case "shift+down", "J":
 				idx := d.taskCursor
 				if idx < maxTask {
-					d.item.subtasks[idx], d.item.subtasks[idx+1] = d.item.subtasks[idx+1], d.item.subtasks[idx]
+					d.item.tasks[idx], d.item.tasks[idx+1] = d.item.tasks[idx+1], d.item.tasks[idx]
 					d.taskCursor++
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
 			case " ":
 				idx := d.taskCursor
-				if len(d.item.subtasks) > idx {
-					d.item.subtasks[idx].completed = !d.item.subtasks[idx].completed
+				if len(d.item.tasks) > idx {
+					d.item.tasks[idx].completed = !d.item.tasks[idx].completed
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
 			case "e":
-				if len(d.item.subtasks) > 0 {
-					d.preEditTitle = d.item.subtasks[d.taskCursor].title
-					d.isNewSubtask = false
+				if len(d.item.tasks) > 0 {
+					d.preEditTitle = d.item.tasks[d.taskCursor].title
+					d.isNewTask = false
 					d.mode = detailEditingTask
-					d.input.SetValue(d.item.subtasks[d.taskCursor].title)
+					d.input.SetValue(d.item.tasks[d.taskCursor].title)
 					d.input.CursorEnd()
 					d.input.Focus()
 					return d, textinput.Blink
 				}
 			case "d":
-				if len(d.item.subtasks) > 0 {
+				if len(d.item.tasks) > 0 {
 					d.mode = detailConfirmingDelete
 				}
 			case "a":
-				return d, d.insertSubtaskAt(len(d.item.subtasks))
+				return d, d.insertTaskAt(len(d.item.tasks))
 			case "o":
 				idx := d.taskCursor + 1
-				if len(d.item.subtasks) == 0 {
+				if len(d.item.tasks) == 0 {
 					idx = 0
 				}
-				return d, d.insertSubtaskAt(idx)
+				return d, d.insertTaskAt(idx)
 			case "O":
 				idx := d.taskCursor
-				if len(d.item.subtasks) == 0 {
+				if len(d.item.tasks) == 0 {
 					idx = 0
 				}
-				return d, d.insertSubtaskAt(idx)
+				return d, d.insertTaskAt(idx)
 			case "c":
 				d.mode = detailChangingCompletion
 				d.completionYesIdx = rand.Intn(len(completionYes))
 				d.completionNoIdx = rand.Intn(len(completionNo))
 				return d, nil
 			case "x":
-				if len(d.item.subtasks) > 0 {
-					d.item.subtasks[d.taskCursor].completed = !d.item.subtasks[d.taskCursor].completed
+				if len(d.item.tasks) > 0 {
+					d.item.tasks[d.taskCursor].completed = !d.item.tasks[d.taskCursor].completed
 					return d, func() tea.Msg { return detailSaveMsg{} }
 				}
 			case "-":
@@ -292,13 +292,13 @@ func getBody(item *milestone, dv *detailViewModel, itemStart time.Time, isCurren
 	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
 
 	var b strings.Builder
-	if len(item.subtasks) == 0 {
+	if len(item.tasks) == 0 {
 		if active {
-			b.WriteString(dimStyle.Italic(true).Render("No subtasks; a to add one"))
+			b.WriteString(dimStyle.Italic(true).Render("No tasks; a to add one"))
 			b.WriteString("\n")
 		}
 	} else {
-		for i, task := range item.subtasks {
+		for i, task := range item.tasks {
 			isSelected := active && i == dv.taskCursor
 
 			// Checkbox prefix

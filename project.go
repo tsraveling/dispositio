@@ -24,7 +24,7 @@ type milestone struct {
 	title       string
 	duration    int // in weeks
 	description string
-	subtasks    []task
+	tasks       []task
 	finished    time.Time
 }
 
@@ -228,10 +228,10 @@ func parseItems(lines []string) []milestone {
 			continue
 		}
 
-		// Skip blockquote lines immediately after title (before description/subtasks);
+		// Skip blockquote lines immediately after title (before description/tasks);
 		// these contain generated metadata like dates and weeks, used for reading
 		// the file in e.g. Obsidian.
-		if strings.HasPrefix(line, "> ") && cur.description == "" && len(cur.subtasks) == 0 {
+		if strings.HasPrefix(line, "> ") && cur.description == "" && len(cur.tasks) == 0 {
 			continue
 		}
 
@@ -260,12 +260,12 @@ func parseItems(lines []string) []milestone {
 					break
 				}
 			}
-			cur.subtasks = append(cur.subtasks, t)
+			cur.tasks = append(cur.tasks, t)
 			continue
 		}
 
-		// Description text (only before subtasks start)
-		if len(cur.subtasks) == 0 {
+		// Description text (only before tasks start)
+		if len(cur.tasks) == 0 {
 			if cur.description == "" && line == "" {
 				continue // skip leading blank lines
 			}
@@ -332,9 +332,9 @@ func saveProject(p project) error {
 		}
 
 		// Tasks
-		if len(it.subtasks) > 0 {
+		if len(it.tasks) > 0 {
 			b.WriteString("\n")
-			for _, t := range it.subtasks {
+			for _, t := range it.tasks {
 				checkbox := "- [ ] "
 				if t.completed {
 					checkbox = "- [x] "
