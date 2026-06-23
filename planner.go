@@ -50,7 +50,7 @@ func (m *plannerViewModel) isHoveringMeta() bool {
 func makePlannerViewModel(p *project) (plannerViewModel, tea.Cmd) {
 	ti := textinput.New()
 	ti.Placeholder = "Item title..."
-	ti.CharLimit = 120
+	ti.CharLimit = 0
 
 	// Copy project into value mode so we can mutate it bubbletea-style
 	m := plannerViewModel{prj: *p, input: ti, mode: normal}
@@ -90,14 +90,14 @@ func (m *plannerViewModel) gotoDetail() {
 // insertItemAt inserts a new empty item at the given index in prj.items
 // and enters editing mode.
 func (m *plannerViewModel) insertItemAt(idx int) tea.Cmd {
-	newItem := item{title: "", duration: 1}
+	newItem := milestone{title: "", duration: 1}
 
 	if len(m.prj.items) == 0 {
-		m.prj.items = []item{newItem}
+		m.prj.items = []milestone{newItem}
 		idx = 0
 	} else {
 		idx = max(0, min(idx, len(m.prj.items)))
-		m.prj.items = append(m.prj.items, item{})
+		m.prj.items = append(m.prj.items, milestone{})
 		copy(m.prj.items[idx+1:], m.prj.items[idx:])
 		m.prj.items[idx] = newItem
 	}
@@ -124,6 +124,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle detail messages.
+	if _, ok := msg.(detailHelpMsg); ok {
+		m.currentModal = newDetailHelpModal()
+		return m, nil
+	}
 	if _, ok := msg.(detailCloseMsg); ok {
 		m.detail = nil
 		return m, nil
@@ -157,7 +161,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if activeIdx >= 0 && completedIdx > activeIdx {
 				completed := m.prj.items[completedIdx]
 				m.prj.items = append(m.prj.items[:completedIdx], m.prj.items[completedIdx+1:]...)
-				m.prj.items = append(m.prj.items[:activeIdx], append([]item{completed}, m.prj.items[activeIdx:]...)...)
+				m.prj.items = append(m.prj.items[:activeIdx], append([]milestone{completed}, m.prj.items[activeIdx:]...)...)
 				m.cursor = activeIdx + 1 // cursor-space
 			}
 		}
@@ -192,7 +196,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if lastFinishedIdx > uncompletedIdx {
 				uncompleted := m.prj.items[uncompletedIdx]
 				m.prj.items = append(m.prj.items[:uncompletedIdx], m.prj.items[uncompletedIdx+1:]...)
-				m.prj.items = append(m.prj.items[:lastFinishedIdx], append([]item{uncompleted}, m.prj.items[lastFinishedIdx:]...)...)
+				m.prj.items = append(m.prj.items[:lastFinishedIdx], append([]milestone{uncompleted}, m.prj.items[lastFinishedIdx:]...)...)
 				m.cursor = lastFinishedIdx + 1 // cursor-space
 			}
 		}
@@ -345,6 +349,9 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
 				}
+			case "?":
+				m.currentModal = newPlannerHelpModal()
+				return m, nil
 			case "M":
 				if !m.onMeta() {
 					m.currentModal = newCompleteItemModal(&m.prj.items[m.itemIndex()])
@@ -546,6 +553,11 @@ func (m plannerViewModel) plannerView() string {
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
 					// IF DELETING: Show confirmation.
 					rightSide = rightStyle.Render(symbol+"  ") + deleteStyle.Render("Delete? y/n")
+				} else if m.detail != nil && &m.prj.items[i] == m.detail.item {
+					// IF OPEN IN DETAIL: Show a long arrow instead of the title.
+					arrowLen := max(2, panelWidth-len(leftSide)-3)
+					arrow := strings.Repeat("-", arrowLen-1) + ">"
+					rightSide = rightStyle.Render(symbol + "  " + arrow)
 				} else {
 					// Otherwise just show the normal title.
 					dateStr := ""
@@ -599,7 +611,7 @@ func (m plannerViewModel) View() string {
 		if m.detail != nil {
 			detailCol = m.detail.View(detailWidth, cfg.wh)
 		} else {
-			var it *item
+			var it *milestone
 			var itemStart time.Time
 			var isCurrent bool
 			if !m.onMeta() {

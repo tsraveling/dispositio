@@ -10,21 +10,54 @@ import (
 )
 
 type subtask struct {
-	title       string
-	description string
-	completed   bool
+	title     string
+	completed bool
 }
 
-type item struct {
+type task struct {
+	title     string
+	completed bool
+	subtasks  []subtask
+	open      bool // ui only
+}
+
+// allSubtasksDone reports whether every subtask is completed. A task with no
+// subtasks is trivially done.
+func (t task) allSubtasksDone() bool {
+	for _, st := range t.subtasks {
+		if !st.completed {
+			return false
+		}
+	}
+	return true
+}
+
+// completedSubtasks returns the number of completed subtasks.
+func (t task) completedSubtasks() int {
+	n := 0
+	for _, st := range t.subtasks {
+		if st.completed {
+			n++
+		}
+	}
+	return n
+}
+
+// incompleteSubtasks returns the number of subtasks not yet completed.
+func (t task) incompleteSubtasks() int {
+	return len(t.subtasks) - t.completedSubtasks()
+}
+
+type milestone struct {
 	title       string
 	duration    int // in weeks
 	description string
-	subtasks    []subtask
+	tasks       []task
 	finished    time.Time
 }
 
 // dateString returns e.g. "(3.14)" for a completed item, or "" if not finished.
-func (i *item) dateString() string {
+func (i *milestone) dateString() string {
 	if i.finished.IsZero() {
 		return ""
 	}
@@ -33,7 +66,7 @@ func (i *item) dateString() string {
 
 // actualWeeks returns the number of weeks from itemStart to the item's end
 // (finished date, or now if still in progress).
-func (i *item) actualWeeks(itemStart time.Time) int {
+func (i *milestone) actualWeeks(itemStart time.Time) int {
 	end := i.finished
 	if end.IsZero() {
 		end = time.Now()
@@ -48,7 +81,7 @@ func (i *item) actualWeeks(itemStart time.Time) int {
 
 // actualDuration returns the effective number of weeks this item occupies:
 // the greater of its planned duration and the actual weeks taken.
-func (i *item) actualDuration(itemStart time.Time) int {
+func (i *milestone) actualDuration(itemStart time.Time) int {
 	return max(i.duration, i.actualWeeks(itemStart))
 }
 
@@ -57,7 +90,7 @@ func (i *item) actualDuration(itemStart time.Time) int {
 // occupy fewer weeks than planned; in-progress overruns extend. The week
 // containing the finished date is counted, so finishing on a Monday gives
 // the rest of that week as margin before the next item begins.
-func (i *item) weeksRendered(itemStart time.Time) int {
+func (i *milestone) weeksRendered(itemStart time.Time) int {
 	if i.finished.IsZero() {
 		return i.actualDuration(itemStart)
 	}
@@ -105,7 +138,7 @@ type project struct {
 	filePath     string
 	name         string
 	startDate    time.Time // zero value means unset
-	items        []item
+	items        []milestone
 	usesTimeline bool
 }
 
@@ -181,9 +214,9 @@ func parseProject(content string, prj *project) {
 }
 
 // Parses item lines into useable data
-func parseItems(lines []string) []item {
-	var items []item
-	var cur *item // currently processing this item
+func parseItems(lines []string) []milestone {
+	var items []milestone
+	var cur *milestone // currently processing this item
 
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
@@ -203,7 +236,7 @@ func parseItems(lines []string) []item {
 				title = strings.TrimSpace(title[:len(title)-len(m[0])])
 			}
 
-			cur = &item{title: title, duration: duration}
+			cur = &milestone{title: title, duration: duration}
 
 			// Check for item metadata code block (Finished date)
 			if i+1 < len(lines) {
@@ -223,10 +256,10 @@ func parseItems(lines []string) []item {
 			continue
 		}
 
-		// Skip blockquote lines immediately after title (before description/subtasks);
+		// Skip blockquote lines immediately after title (before description/tasks);
 		// these contain generated metadata like dates and weeks, used for reading
 		// the file in e.g. Obsidian.
-		if strings.HasPrefix(line, "> ") && cur.description == "" && len(cur.subtasks) == 0 {
+		if strings.HasPrefix(line, "> ") && cur.description == "" && len(cur.tasks) == 0 {
 			continue
 		}
 
@@ -237,29 +270,30 @@ func parseItems(lines []string) []item {
 			if completed {
 				title = strings.TrimPrefix(line, "- [x] ")
 			}
-			st := subtask{title: title, completed: completed}
-			// Consume indented bullet lines as description
+			t := task{title: title, completed: completed}
+			// Consume indented checklist lines as subtasks
 			for i+1 < len(lines) {
 				next := lines[i+1]
-				if (len(next) >= 2 && next[0] == ' ' && strings.HasPrefix(strings.TrimLeft(next, " \t"), "- ")) ||
-					(len(next) >= 1 && next[0] == '\t' && strings.HasPrefix(strings.TrimLeft(next, " \t"), "- ")) {
-					desc := strings.TrimLeft(next, " \t")
-					desc = strings.TrimPrefix(desc, "- ")
-					if st.description != "" {
-						st.description += "\n"
+				indented := len(next) > 0 && (next[0] == ' ' || next[0] == '\t')
+				trimmed := strings.TrimLeft(next, " \t")
+				if indented && (strings.HasPrefix(trimmed, "- [ ] ") || strings.HasPrefix(trimmed, "- [x] ")) {
+					subCompleted := strings.HasPrefix(trimmed, "- [x] ")
+					subTitle := strings.TrimPrefix(trimmed, "- [ ] ")
+					if subCompleted {
+						subTitle = strings.TrimPrefix(trimmed, "- [x] ")
 					}
-					st.description += desc
+					t.subtasks = append(t.subtasks, subtask{title: subTitle, completed: subCompleted})
 					i++
 				} else {
 					break
 				}
 			}
-			cur.subtasks = append(cur.subtasks, st)
+			cur.tasks = append(cur.tasks, t)
 			continue
 		}
 
-		// Description text (only before subtasks start)
-		if len(cur.subtasks) == 0 {
+		// Description text (only before tasks start)
+		if len(cur.tasks) == 0 {
 			if cur.description == "" && line == "" {
 				continue // skip leading blank lines
 			}
@@ -325,19 +359,22 @@ func saveProject(p project) error {
 			b.WriteString("\n" + it.description + "\n")
 		}
 
-		// Subtasks
-		if len(it.subtasks) > 0 {
+		// Tasks
+		if len(it.tasks) > 0 {
 			b.WriteString("\n")
-			for _, st := range it.subtasks {
+			for _, t := range it.tasks {
 				checkbox := "- [ ] "
-				if st.completed {
+				if t.completed {
 					checkbox = "- [x] "
 				}
-				b.WriteString(checkbox + st.title + "\n")
-				if st.description != "" {
-					for _, dl := range strings.Split(st.description, "\n") {
-						b.WriteString("    - " + dl + "\n")
+				b.WriteString(checkbox + t.title + "\n")
+				// Subtasks: indented checklist items under the task
+				for _, st := range t.subtasks {
+					subbox := "- [ ] "
+					if st.completed {
+						subbox = "- [x] "
 					}
+					b.WriteString("  " + subbox + st.title + "\n")
 				}
 			}
 		}

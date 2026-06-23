@@ -7,24 +7,14 @@
 ## FIXES
 
 - The "current week" logic, e.g. if an item needs to extend into a week, or the next item moves up into a week, is a bit unpredictable.
-- Fix left side padding on items column
-- Escape should commit otherwise vim users are going to die
-- After completing a few milestones early, Dis now shows my due date on my current milestone as one week later than it should be (end of first week of next milestone)
 
 ## IMPROVEMENTS
 
-- Add sub-subtasks; accordion view. Goal is to get entire project management moved in here.
 - Add the number of subtasks and icon for description on the right end of the items rows
 - If I hit 'a' and cancel, return cursor to previous location
 - When adding subtasks, enter to next one
 - Movement shortcuts e.g. G, gg etc.
-- Make the visual distinction better when switching between panels, e.g. dim the left items when moving and add some arrows to show that the cursor item is open
-- Remove item / subtask length constraints
-- Add a due date to detail view to make it clear when this item is expected to be done by
 - Give detail description a max width that looks good
-- q to exit instead of esc
-    * [ ] With confirm if we are in a subview
-- Give left side column a max width that works well
 
 ## NEXT
 
@@ -37,3 +27,10 @@
 
 ## DONE
 
+- Add sub-subtasks; accordion view. Goal is to get entire project management moved in here.
+- Make the visual distinction better when switching between panels, e.g. dim the left items when moving and add some arrows to show that the cursor item is open
+- q to exit instead of esc
+    * [ ] With confirm if we are in a subview
+- Give left side column a max width that works well
+- Add a due date to detail view to make it clear when this item is expected to be done by
+- Remove item / subtask length constraints

@@ -6,10 +6,10 @@ import (
 )
 
 type completeItemModal struct {
-	item *item
+	item *milestone
 }
 
-func newCompleteItemModal(it *item) *completeItemModal {
+func newCompleteItemModal(it *milestone) *completeItemModal {
 	return &completeItemModal{item: it}
 }
 
