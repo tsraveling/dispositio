@@ -124,6 +124,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle detail messages.
+	if _, ok := msg.(detailHelpMsg); ok {
+		m.currentModal = newDetailHelpModal()
+		return m, nil
+	}
 	if _, ok := msg.(detailCloseMsg); ok {
 		m.detail = nil
 		return m, nil
@@ -345,6 +349,9 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
 				}
+			case "?":
+				m.currentModal = newPlannerHelpModal()
+				return m, nil
 			case "M":
 				if !m.onMeta() {
 					m.currentModal = newCompleteItemModal(&m.prj.items[m.itemIndex()])

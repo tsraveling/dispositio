@@ -15,6 +15,7 @@ import (
 )
 
 type detailCloseMsg struct{}
+type detailHelpMsg struct{}
 type detailSaveMsg struct{}
 type detailItemCompletedMsg struct{}
 type detailItemUncompletedMsg struct{}
@@ -271,6 +272,8 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 			switch msg.String() {
 			case "q", "ctrl+c":
 				return d, tea.Quit
+			case "?":
+				return d, func() tea.Msg { return detailHelpMsg{} }
 			case "esc":
 				return d, func() tea.Msg { return detailCloseMsg{} }
 			case "left", "h":
