@@ -269,6 +269,8 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 	case detailNormal:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
+			case "q", "ctrl+c":
+				return d, tea.Quit
 			case "esc":
 				return d, func() tea.Msg { return detailCloseMsg{} }
 			case "left", "h":
