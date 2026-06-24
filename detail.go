@@ -478,7 +478,7 @@ func renderProgressBar(width int, ratio float64, active bool) string {
 	return progress.New(opts...).ViewAs(ratio)
 }
 
-func getBody(item *milestone, dv *detailViewModel, width int, itemStart time.Time, isCurrent bool) string {
+func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart time.Time, isCurrent bool) string {
 	title := titleStyle.Render(item.title)
 	active := dv != nil
 
@@ -531,40 +531,51 @@ func getBody(item *milestone, dv *detailViewModel, width int, itemStart time.Tim
 		}
 	}
 
-	var b strings.Builder
+	// Build the task list as discrete logical lines so the body can be
+	// windowed around the cursor (see assembly + clipping below). cursorTaskLine
+	// is the index, within taskLines, of the currently selected row.
+	var taskLines []string
+	cursorTaskLine := -1
 	if len(item.tasks) == 0 {
 		if active {
-			b.WriteString(dimStyle.Italic(true).Render("No tasks; a to add one"))
-			b.WriteString("\n")
+			taskLines = append(taskLines, dimStyle.Italic(true).Render("No tasks; a to add one"))
 		}
 	} else {
 		for ti := range item.tasks {
 			t := &item.tasks[ti]
 			taskSelected := active && dv.taskCursor == ti && dv.subCursor == -1
 
-			b.WriteString(checkbox(t.completed, taskSelected))
+			var line strings.Builder
+			line.WriteString(checkbox(t.completed, taskSelected))
 
 			// Subtask count decoration: dim when closed, active when open.
 			if len(t.subtasks) > 0 {
 				count := fmt.Sprintf("(%d/%d) ", t.completedSubtasks(), len(t.subtasks))
 				if t.open {
-					b.WriteString(primaryStyle.Render(count))
+					line.WriteString(primaryStyle.Render(count))
 				} else {
-					b.WriteString(dimStyle.Render(count))
+					line.WriteString(dimStyle.Render(count))
 				}
 			}
 
-			b.WriteString(titleCell(t.title, t.completed, taskSelected, ti, -1))
-			b.WriteString("\n")
+			line.WriteString(titleCell(t.title, t.completed, taskSelected, ti, -1))
+			if taskSelected {
+				cursorTaskLine = len(taskLines)
+			}
+			taskLines = append(taskLines, line.String())
 
 			if t.open {
 				for si := range t.subtasks {
 					st := &t.subtasks[si]
 					subSelected := active && dv.taskCursor == ti && dv.subCursor == si
-					b.WriteString("  ")
-					b.WriteString(checkbox(st.completed, subSelected))
-					b.WriteString(titleCell(st.title, st.completed, subSelected, ti, si))
-					b.WriteString("\n")
+					var sl strings.Builder
+					sl.WriteString("  ")
+					sl.WriteString(checkbox(st.completed, subSelected))
+					sl.WriteString(titleCell(st.title, st.completed, subSelected, ti, si))
+					if subSelected {
+						cursorTaskLine = len(taskLines)
+					}
+					taskLines = append(taskLines, sl.String())
 				}
 			}
 		}
@@ -657,16 +668,66 @@ func getBody(item *milestone, dv *detailViewModel, width int, itemStart time.Tim
 		}
 	}
 
-	body := fmt.Sprintf("%s\n\n%s", title, desc)
+	// Assemble the body as a flat list of logical lines, tracking which line
+	// holds the cursor. A blank string entry is a spacer (matches the old
+	// "\n\n" separators).
+	var logical []string
+	cursorLogical := -1
+	addBlock := func(s string) { logical = append(logical, strings.Split(s, "\n")...) }
+
+	addBlock(title)
+	logical = append(logical, "")
+	addBlock(desc)
 	if progressBlock != "" {
-		body += "\n\n" + progressBlock
+		logical = append(logical, "")
+		addBlock(progressBlock)
 	}
-	body += fmt.Sprintf("\n\n%s\n\n%s", b.String(), itemStatus)
-	return body
+	logical = append(logical, "")
+	taskStart := len(logical)
+	logical = append(logical, taskLines...)
+	if cursorTaskLine >= 0 {
+		cursorLogical = taskStart + cursorTaskLine
+	}
+	logical = append(logical, "")
+	addBlock(itemStatus)
+
+	// Expand each logical line into the display lines it actually occupies once
+	// wrapped at the panel's content width, so long/multiline rows are counted
+	// correctly. contentWidth mirrors detailStyle: Width(w-2) minus horizontal
+	// padding of 2 on each side.
+	contentWidth := max(10, width-6)
+	wrap := lipgloss.NewStyle().Width(contentWidth)
+	var display []string
+	cursorDisplay := -1
+	for i, ll := range logical {
+		if i == cursorLogical {
+			cursorDisplay = len(display)
+		}
+		display = append(display, strings.Split(wrap.Render(ll), "\n")...)
+	}
+
+	// Window the display lines so the cursor row stays visible and the content
+	// never overflows the panel (which would push the header off-screen).
+	// viewHeight matches detailStyle's Height(h-3).
+	viewHeight := height - 3
+	if viewHeight > 0 && len(display) > viewHeight {
+		start := 0
+		if cursorDisplay >= 0 {
+			start = max(cursorDisplay-viewHeight/2, 0)
+		}
+		end := start + viewHeight
+		if end > len(display) {
+			end = len(display)
+			start = max(0, end-viewHeight)
+		}
+		display = display[start:end]
+	}
+
+	return strings.Join(display, "\n")
 }
 
 func (d *detailViewModel) View(w, h int) string {
-	body := getBody(d.item, d, w, d.itemStart, d.isCurrent)
+	body := getBody(d.item, d, w, h, d.itemStart, d.isCurrent)
 	return detailStyle(w, h, true).Render(body)
 }
 
@@ -674,6 +735,6 @@ func detailViewInactive(it *milestone, w, h int, itemStart time.Time, isCurrent 
 	if it == nil {
 		return ""
 	}
-	body := getBody(it, nil, w, itemStart, isCurrent)
+	body := getBody(it, nil, w, h, itemStart, isCurrent)
 	return detailStyle(w, h, false).Render(body)
 }
