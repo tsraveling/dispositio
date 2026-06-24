@@ -45,22 +45,24 @@ Finished: May 25 2026
 - [x] Implement for sailing
 - [x] Drama: show anchorages in a very basic, placeholder-text way
 
-# Loading the Ship (4)
+# Loading the Ship (7)
 
 - [x] Real time refactor -- data now deals with real time (in hours), not day-quarters.
 - [ ] Refactor ship UI to match new modality
 - [ ] Stub out standardized crew grid component.
-- [ ] Stub out standardized cargo component.
-- [ ] Stub out standardized order component
-- [ ] Stub out standardized Setup Work component / UI
-- [ ] Stub out standardized ongoing work component
-- [ ] Standard port UI has grayboxed city shape with nodes for Port and fondaco, and a Path connecting them.
-- [ ] Initial state: test cargo is in the fondaco to start with, and crew is split.
+  - [ ] this is a subtask
+  - [ ] another!
+- [x] Stub out standardized cargo component.
+- [x] Stub out standardized order component
+- [x] Stub out standardized Setup Work component / UI
+- [x] Stub out standardized ongoing work component
+- [x] Standard port UI has grayboxed city shape with nodes for Port and fondaco, and a Path connecting them.
+- [x] Initial state: test cargo is in the fondaco to start with, and crew is split.
 - [ ] First order: move crew.
 - [ ] Crew transit along path while moving.
-- [ ] State updates at end
-- [ ] Time UI: tap space to advance to next completion.
-- [ ] Stub basic notification system w/ job complete
+- [x] State updates at end
+- [x] Time UI: tap space to advance to next completion.
+- [x] Stub basic notification system w/ job complete
 - [ ] Second order: move cargo.
 - [ ] Job setup: crew picker. Can quickly click to assign workers from those in area.
 - [ ] Job setup: cargo picker. Can somehow select what and how much cargo to move.
@@ -110,7 +112,7 @@ Finished: May 25 2026
 - [ ] Stub Anchor for now -- basically treats the city like a stop town.
 - [ ] Put In starts the Put In job. On completion you are docked in the new port.
 
-# Skald Integration (2)
+# Skald Integration (4)
 
 - [ ] I have the latest version of Skald installed
 - [ ] I have the texts file structure build out

@@ -52,7 +52,10 @@ func detailStyle(w, h int, active bool) lipgloss.Style {
 		Padding(1, 2).
 		MarginTop(1).
 		Width(w - 2).
-		Height(h - 3)
+		// h-5 = terminal height minus the chrome this style adds: border (2),
+		// vertical padding (2), and MarginTop (1). Keeps total height == h so
+		// the panel doesn't overflow and push the top border off-screen.
+		Height(h - 5)
 }
 
 func boxWidth(termWidth int) int {

@@ -708,8 +708,8 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 
 	// Window the display lines so the cursor row stays visible and the content
 	// never overflows the panel (which would push the header off-screen).
-	// viewHeight matches detailStyle's Height(h-3).
-	viewHeight := height - 3
+	// viewHeight matches detailStyle's Height(h-5).
+	viewHeight := height - 5
 	if viewHeight > 0 && len(display) > viewHeight {
 		start := 0
 		if cursorDisplay >= 0 {
