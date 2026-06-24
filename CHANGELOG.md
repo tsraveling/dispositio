@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.1 - 2026-06-24
+#### Bug Fixes
+- fixes height flickering - (f14986c) - Tim Raveling
+- fixes multiline issue - (0eb5a98) - Tim Raveling
+
+- - -
+
 ## 0.2.0 - 2026-06-23
 #### Features
 - subtasks (#2) - (6b02d64) - Tim Raveling
