@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.2 - 2026-06-25
+#### Bug Fixes
+- switched task counter to use weekdays - (24cfda2) - Tim Raveling
+
+- - -
+
 ## 0.2.1 - 2026-06-24
 #### Bug Fixes
 - fixes height flickering - (f14986c) - Tim Raveling
