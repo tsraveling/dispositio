@@ -657,12 +657,16 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 				rate = dimStyle.Render("All subtasks complete!")
 			} else {
 				endDate := itemStart.AddDate(0, 0, item.duration*7-1)
-				daysLeft := int(time.Until(endDate).Hours() / 24)
-				if daysLeft < 1 {
-					daysLeft = 1
+				weekdaysLeft := weekdaysBetween(time.Now(), endDate)
+				if weekdaysLeft < 1 {
+					weekdaysLeft = 1
 				}
-				perDay := float64(incomplete) / float64(daysLeft)
-				rate = dimStyle.Render(fmt.Sprintf("On track: %.1f tasks per day", perDay))
+				perDay := float64(incomplete) / float64(weekdaysLeft)
+				if perDay < 1 {
+					rate = dimStyle.Render(fmt.Sprintf("%.1f weekdays per task til done", 1/perDay))
+				} else {
+					rate = dimStyle.Render(fmt.Sprintf("%.1f tasks per weekday til done", perDay))
+				}
 			}
 			progressBlock = bar + "\n" + rate
 		}
