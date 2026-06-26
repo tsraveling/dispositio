@@ -64,7 +64,30 @@ func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isC
 	ti.Placeholder = "Task title..."
 	ti.CharLimit = 0
 
-	return detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
+	d := detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
+	d.cursorToFirstUnchecked()
+	return d
+}
+
+// Go to first uncompleted task, and its first uncompleted subtask.
+func (d *detailViewModel) cursorToFirstUnchecked() {
+	for ti := range d.item.tasks {
+		if !d.item.tasks[ti].completed {
+			d.taskCursor = ti
+			d.subCursor = -1
+			t := &d.item.tasks[ti]
+			if len(t.subtasks) > 0 {
+				t.open = true
+				for si := range t.subtasks {
+					if !t.subtasks[si].completed {
+						d.subCursor = si
+						break
+					}
+				}
+			}
+			return
+		}
+	}
 }
 
 // true on task row, false on subtask.
