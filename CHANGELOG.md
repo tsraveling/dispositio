@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.3 - 2026-06-26
+#### Bug Fixes
+- cursor now starts on first open task/subtask - (75ded55) - Tim Raveling
+
+- - -
+
 ## 0.2.2 - 2026-06-25
 #### Bug Fixes
 - switched task counter to use weekdays - (24cfda2) - Tim Raveling
