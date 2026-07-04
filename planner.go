@@ -527,6 +527,10 @@ func (m plannerViewModel) plannerView() string {
 
 			if sameWeekFinish {
 				leftSide = fmt.Sprintf("--+ %7s", "")
+			} else if week == 1 {
+				// Show the 4-digit year in green; pad to keep width == 11.
+				leftSide = fmt.Sprintf("%d %-5s ", wsYear, date)
+				leftStyle = doneStyle
 			} else {
 				leftSide = fmt.Sprintf("W%-3d %-5s ", week, date)
 				if wsYear == nowYear && week == nowWeek {
