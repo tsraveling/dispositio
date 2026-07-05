@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.5 - 2026-07-05
+#### Bug Fixes
+- shows days per task for all milestones - (5d4ac7d) - Tim Raveling
+
+- - -
+
 ## 0.2.4 - 2026-07-04
 #### Bug Fixes
 - shows year in week timeline - (965aef3) - Tim Raveling
