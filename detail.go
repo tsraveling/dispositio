@@ -674,24 +674,25 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 		// The rate/status line under the bar is only meaningful for the active
 		// (current) milestone.
 		progressBlock = bar
-		if isCurrent {
-			var rate string
-			if incomplete == 0 {
-				rate = dimStyle.Render("All subtasks complete!")
-			} else {
-				endDate := itemStart.AddDate(0, 0, item.duration*7-1)
-				weekdaysLeft := weekdaysBetween(time.Now(), endDate)
-				if weekdaysLeft < 1 {
-					weekdaysLeft = 1
-				}
-				perDay := float64(incomplete) / float64(weekdaysLeft)
-				if perDay < 1 {
-					rate = dimStyle.Render(fmt.Sprintf("%.1f weekdays per task til done", 1/perDay))
-				} else {
-					rate = dimStyle.Render(fmt.Sprintf("%.1f tasks per weekday til done", perDay))
-				}
+		var rate string
+		if incomplete == 0 {
+			rate = "All subtasks complete!"
+		} else {
+			endDate := itemStart.AddDate(0, 0, item.duration*7-1)
+			weekdaysLeft := weekdaysBetween(time.Now(), endDate)
+			if weekdaysLeft < 1 {
+				weekdaysLeft = 1
 			}
-			progressBlock = bar + "\n" + rate
+			perDay := float64(incomplete) / float64(weekdaysLeft)
+			if perDay < 1 {
+				rate = fmt.Sprintf("%.1f weekdays per task", 1/perDay)
+			} else {
+				rate = fmt.Sprintf("%.1f tasks per weekday", perDay)
+			}
+			if isCurrent {
+				rate += " remaining"
+			}
+			progressBlock = bar + "\n" + dimStyle.Render(rate)
 		}
 	}
 
