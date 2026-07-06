@@ -52,7 +52,8 @@ func promptCreate(path string) bool {
 func main() {
 
 	// Load the config file
-	cfg = readConfig()
+	// TODO: Integrate config at some point?
+	// cfg = readConfig()
 
 	// Parse flags and positional args
 	var positional string
