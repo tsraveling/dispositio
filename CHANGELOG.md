@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.8 - 2026-07-06
+#### Bug Fixes
+- removed need for config - (5ff02f7) - Tim Raveling
+#### Documentation
+- updated README with demo - (11f4a6e) - Tim Raveling
+#### Miscellaneous Chores
+- updated pipeline and readme - (9bd9c9d) - Tim Raveling
+
+- - -
+
 ## v0.2.7 - 2026-07-06
 #### Bug Fixes
 - added version flag - (2e2aeae) - Tim Raveling
