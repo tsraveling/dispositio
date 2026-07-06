@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.6 - 2026-07-06
+#### Bug Fixes
+- adds release hooks - (96f9f36) - Tim Raveling
+#### Miscellaneous Chores
+- add version constant and bump hooks - (16c1258) - Tim Raveling
+
+- - -
+
 ## 0.2.5 - 2026-07-05
 #### Bug Fixes
 - shows days per task for all milestones - (5d4ac7d) - Tim Raveling
