@@ -37,6 +37,7 @@ homebrew_casks:
   - repository:
       owner: tsraveling
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/tsraveling/dispositio
     description: Terminal tool for planning large projects in simple markdown
     # unsigned binary: strip quarantine so Gatekeeper doesn't block it

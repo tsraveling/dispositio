@@ -61,6 +61,9 @@ func main() {
 		case "-h", "--help":
 			printHelp()
 			return
+		case "-v", "--version":
+			fmt.Println(Version)
+			return
 		default:
 			positional = arg
 		}
