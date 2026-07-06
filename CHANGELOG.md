@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.7 - 2026-07-06
+#### Bug Fixes
+- added version flag - (2e2aeae) - Tim Raveling
+#### Miscellaneous Chores
+- add v tag prefix, bump app-token action - (6fac8ad) - Tim Raveling
+
+- - -
+
 ## 0.2.6 - 2026-07-06
 #### Bug Fixes
 - adds release hooks - (96f9f36) - Tim Raveling
