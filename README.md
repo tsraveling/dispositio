@@ -2,6 +2,8 @@
 
 Dispositio is a terminal tool for planning large projects in simple markdown.
 
+![Demo](docs/demo.gif)
+
 ## Installation
 
 ### Homebrew (macOS)
