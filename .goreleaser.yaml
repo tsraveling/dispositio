@@ -1,0 +1,67 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+homebrew_casks:
+  - repository:
+      owner: tsraveling
+      name: homebrew-tap
+    homepage: https://github.com/tsraveling/dispositio
+    description: Terminal tool for planning large projects in simple markdown
+    # unsigned binary: strip quarantine so Gatekeeper doesn't block it
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/dispositio"]
+          end
+
+scoops:
+  - repository:
+      owner: tsraveling
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_GITHUB_TOKEN }}"
+    homepage: https://github.com/tsraveling/dispositio
+    description: Terminal tool for planning large projects in simple markdown
+    license: GPL-3.0
+
+nfpms:
+  - homepage: https://github.com/tsraveling/dispositio
+    description: Terminal tool for planning large projects in simple markdown
+    license: GPL-3.0
+    maintainer: Tim Raveling <tsraveling@proton.me>
+    formats:
+      - deb
+      - rpm
+      - apk
