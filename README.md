@@ -1,4 +1,6 @@
-# dispositio
+# Dispositio
+
+> **For more free software, or to check out my newsletter about useful tools and systems, head over to [The Systemist](https://systemist.net).**
 
 Dispositio is a terminal tool for planning large projects in simple markdown.
 
