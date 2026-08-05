@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// @region ui:styles -- COLORS + SHARED STYLES
+
 const (
 	maxWidth     = 120
 	maxLogHeight = 25

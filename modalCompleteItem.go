@@ -5,6 +5,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Idea was to have a modal interface for completing milestones
+// right from the planner; currently unused.
+
+// Idea felt cute, might delete later.
+
 type completeItemModal struct {
 	item *milestone
 }

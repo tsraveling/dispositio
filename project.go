@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// @region data:model -- MILESTONE/TASK/PROJECT TYPES
+
 type subtask struct {
 	title     string
 	completed bool
@@ -60,6 +62,8 @@ func (i *milestone) dateString() string {
 	}
 	return fmt.Sprintf("(%d.%d)", int(i.finished.Month()), i.finished.Day())
 }
+
+// @region data:timeline -- WEEK MATH (start dates, actual weeks, current)
 
 // weeks from itemStart to the item's end (finished date, or now if
 // still in progress).
@@ -146,6 +150,8 @@ func readDate(s string) (time.Time, error) {
 func writeDate(t time.Time) string {
 	return t.Format(dateFormat)
 }
+
+// @region data:parse -- MARKDOWN PARSE (load)
 
 // extracts key-value pairs from a fenced code block.
 // Returns the map and the number of lines consumed (0 if no block found).
@@ -299,6 +305,8 @@ func parseItems(lines []string) []milestone {
 
 	return items
 }
+
+// @region data:save -- MARKDOWN SERIALIZE (save)
 
 func saveProject(p project) error {
 	var b strings.Builder

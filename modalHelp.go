@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// @region modal:help -- HELP MODAL + KEYMAP TABLES
+
 var modalHelpType modalType = "help"
 
 // a key/description pair, or a section header when key is "".

@@ -14,6 +14,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// @region detail:model -- DETAIL VIEWMODEL + MODES
+
 type detailCloseMsg struct{}
 type detailHelpMsg struct{}
 type detailSaveMsg struct{}
@@ -90,6 +92,8 @@ func (d *detailViewModel) cursorToFirstUnchecked() {
 	}
 }
 
+// @region detail:cursor -- TASK/SUBTASK CURSOR NAV (flatRows)
+
 func (d *detailViewModel) onTask() bool { return d.subCursor < 0 }
 
 // navigable row: a task (sub == -1) or one of its subtasks.
@@ -146,6 +150,8 @@ func (d *detailViewModel) setCurTitle(s string) {
 		d.item.tasks[d.taskCursor].title = s
 	}
 }
+
+// @region detail:mutate -- INSERT/DELETE/PROMOTE TASKS
 
 func (d *detailViewModel) deleteCurrent() {
 	if d.subCursor >= 0 {
@@ -218,6 +224,8 @@ func (d *detailViewModel) applyConfirm() tea.Cmd {
 	}
 	return nil
 }
+
+// @region detail:input -- DETAIL UPDATE()
 
 func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 
@@ -477,6 +485,8 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 
 	return d, nil
 }
+
+// @region detail:body -- DETAIL BODY RENDERING (getBody)
 
 func renderProgressBar(width int, ratio float64, active bool) string {
 	opts := []progress.Option{progress.WithWidth(width)}

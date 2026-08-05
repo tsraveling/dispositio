@@ -6,6 +6,8 @@ import (
 	overlay "github.com/rmhubbert/bubbletea-overlay"
 )
 
+// @region modal:core -- MODAL INTERFACE + OVERLAY
+
 type modalType string
 
 var modalNone modalType = ""

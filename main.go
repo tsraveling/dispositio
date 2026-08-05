@@ -14,6 +14,8 @@ func printHelp() {
 	// TODO: Fill out help stuff here
 }
 
+// @region app:files -- FILE PATH RESOLUTION + CREATE PROMPT
+
 // turns the optional CLI arg into a .md file path.
 //   - no arg: ./ROADMAP.md
 //   - directory: <dir>/ROADMAP.md
@@ -48,6 +50,8 @@ func promptCreate(path string) bool {
 	}
 	return true
 }
+
+// @region app:entry -- CLI ARGS + MAIN()
 
 func main() {
 

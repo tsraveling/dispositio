@@ -2,6 +2,8 @@ package main
 
 import tea "github.com/charmbracelet/bubbletea"
 
+// @region ui:confirm -- REUSABLE YES/NO CONFIRM
+
 type confirmKind int
 
 const (

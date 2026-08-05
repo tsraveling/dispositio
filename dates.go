@@ -2,6 +2,8 @@ package main
 
 import "time"
 
+// @region data:dates -- WEEKDAY COUNTING HELPERS
+
 // counts weekdays (Mon–Fri) in the inclusive range [from, to];
 // 0 if to is before from.
 func weekdaysBetween(from, to time.Time) int {

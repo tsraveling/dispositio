@@ -10,6 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// @region planner:model -- PLANNER DEF
+
 type plannerMode int
 
 const (
@@ -104,6 +106,8 @@ func (m *plannerViewModel) insertItemAt(idx int) tea.Cmd {
 	m.input.Focus()
 	return textinput.Blink
 }
+
+// @region planner:messages -- PLANNER UPDATE()
 
 func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -207,6 +211,8 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		*m.detail, cmd = m.detail.Update(msg)
 		return m, cmd
 	}
+
+	// @region planner:input -- PLANNER INPUT HANDLING (edit/delete/normal modes)
 
 	switch m.mode {
 	case editingTitle:
@@ -397,6 +403,8 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// @region planner:planner -- PLANNER COMPONENT
+
 func (m plannerViewModel) plannerView() string {
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
@@ -511,7 +519,7 @@ func (m plannerViewModel) plannerView() string {
 
 			var rightSide string
 
-			// Symbols: ✓ done, ⬤ current, ◯ pending, ⚠ overdue
+			// ✓ done, ⬤ current, ◯ pending, ⚠ overdue
 			overdue := isCurrent && w >= it.duration
 			symbol := "◯"
 			if !it.finished.IsZero() {
@@ -568,6 +576,8 @@ func (m plannerViewModel) plannerView() string {
 
 	return strings.Join(lines, "\n") + "\n"
 }
+
+// @region planner:view -- PANEL VIEW() (inc side by side vs full layout)
 
 func (m plannerViewModel) View() string {
 	plannerStr := m.plannerView()

@@ -8,6 +8,8 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+// @region app:config -- CONFIG + WINDOW DIMENSIONS
+
 type config struct {
 	someValue string
 
