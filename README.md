@@ -39,6 +39,10 @@ go install github.com/tsraveling/dispositio@latest
 
 Download the archive for your platform from the [latest release](https://github.com/tsraveling/dispositio/releases/latest), extract, and place `dispositio` on your `PATH`.
 
+## Detailed documentation
+
+A full walkthrough with GIF examples can be found over at [The Systemist](https://systemist.net/tools/dispositio)!
+
 ## Quickstart
 
 Simply run `dispositio` in any folder. It will prompt to create ROADMAP.md (if it doesn't already exist); your project will be stored in this file in simple Markdown.
