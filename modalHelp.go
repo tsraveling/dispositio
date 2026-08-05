@@ -10,7 +10,7 @@ import (
 
 var modalHelpType modalType = "help"
 
-// helpRow is a single key/description pair, or a section header when key is "".
+// a key/description pair, or a section header when key is "".
 type helpRow struct {
 	key  string
 	desc string

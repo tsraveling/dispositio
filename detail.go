@@ -90,7 +90,6 @@ func (d *detailViewModel) cursorToFirstUnchecked() {
 	}
 }
 
-// true on task row, false on subtask.
 func (d *detailViewModel) onTask() bool { return d.subCursor < 0 }
 
 // navigable row: a task (sub == -1) or one of its subtasks.
@@ -133,7 +132,6 @@ func (d *detailViewModel) moveCursor(delta int) {
 	d.subCursor = rows[cur].sub
 }
 
-// returns the title at the cursor (task or subtask).
 func (d *detailViewModel) curTitle() string {
 	if d.subCursor >= 0 {
 		return d.item.tasks[d.taskCursor].subtasks[d.subCursor].title
@@ -141,7 +139,6 @@ func (d *detailViewModel) curTitle() string {
 	return d.item.tasks[d.taskCursor].title
 }
 
-// writes the title at the cursor (task or subtask).
 func (d *detailViewModel) setCurTitle(s string) {
 	if d.subCursor >= 0 {
 		d.item.tasks[d.taskCursor].subtasks[d.subCursor].title = s
@@ -150,7 +147,6 @@ func (d *detailViewModel) setCurTitle(s string) {
 	}
 }
 
-// removes the task or subtask at the cursor and fixes the cursor.
 func (d *detailViewModel) deleteCurrent() {
 	if d.subCursor >= 0 {
 		t := &d.item.tasks[d.taskCursor]
@@ -168,7 +164,6 @@ func (d *detailViewModel) deleteCurrent() {
 	}
 }
 
-// inserts a new empty task at the given index and enters editing mode.
 func (d *detailViewModel) insertTaskAt(idx int) tea.Cmd {
 	idx = max(0, min(idx, len(d.item.tasks)))
 	d.item.tasks = append(d.item.tasks, task{})
@@ -180,8 +175,6 @@ func (d *detailViewModel) insertTaskAt(idx int) tea.Cmd {
 	return textinput.Blink
 }
 
-// inserts a new empty subtask into taskIdx at subIdx, opening
-// the task, and enters editing mode.
 func (d *detailViewModel) insertSubtaskAt(taskIdx, subIdx int) tea.Cmd {
 	t := &d.item.tasks[taskIdx]
 	t.open = true
@@ -195,7 +188,6 @@ func (d *detailViewModel) insertSubtaskAt(taskIdx, subIdx int) tea.Cmd {
 	return textinput.Blink
 }
 
-// startEditingNew puts the input into edit mode for a freshly inserted row.
 func (d *detailViewModel) startEditingNew() {
 	d.preEditTitle = ""
 	d.isNewTask = true
@@ -204,7 +196,6 @@ func (d *detailViewModel) startEditingNew() {
 	d.input.Focus()
 }
 
-// runs the action backing the active confirm dialog.
 func (d *detailViewModel) applyConfirm() tea.Cmd {
 	switch d.confirm.kind {
 	case confirmDeleteItem:
@@ -232,7 +223,6 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 
 	switch d.mode {
 
-	// Description editing
 	case detailEditingDesc:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
@@ -251,7 +241,6 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.textarea, cmd = d.textarea.Update(msg)
 		return d, cmd
 
-	// Editing a task or subtask title (add or rename)
 	case detailEditingTask:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
@@ -274,7 +263,6 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		d.input, cmd = d.input.Update(msg)
 		return d, cmd
 
-	// Resolving a confirm dialog (delete, completion, complete-subtasks)
 	case detailConfirming:
 		switch d.confirm.handle(msg) {
 		case confirmYes:
@@ -289,7 +277,6 @@ func (d detailViewModel) Update(msg tea.Msg) (detailViewModel, tea.Cmd) {
 		}
 		return d, nil
 
-	// Normal detail navigation
 	case detailNormal:
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
@@ -518,7 +505,6 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 	confirmStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
 
-	// checkbox renders the "- [ ] " / "- [x] " prefix in the right style.
 	checkbox := func(completed, selected bool) string {
 		box := "- [ ] "
 		if completed {
@@ -534,7 +520,7 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 		}
 	}
 
-	// titleCell renders the title, or the inline edit/confirm widget when the
+	// renders the title, or the inline edit/confirm widget when the
 	// cursor is on this row.
 	titleCell := func(t string, completed, selected bool, ti, si int) string {
 		if active && selected && dv.mode == detailConfirming &&
@@ -571,7 +557,6 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 			var line strings.Builder
 			line.WriteString(checkbox(t.completed, taskSelected))
 
-			// Subtask count decoration: dim when closed, active when open.
 			if len(t.subtasks) > 0 {
 				count := fmt.Sprintf("(%d/%d) ", t.completedSubtasks(), len(t.subtasks))
 				if t.open {

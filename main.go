@@ -14,7 +14,7 @@ func printHelp() {
 	// TODO: Fill out help stuff here
 }
 
-// resolveFilePath turns the optional CLI arg into a .md file path.
+// turns the optional CLI arg into a .md file path.
 //   - no arg: ./ROADMAP.md
 //   - directory: <dir>/ROADMAP.md
 //   - .md file: use as-is
@@ -29,8 +29,8 @@ func resolveFilePath(arg string) string {
 	return arg
 }
 
-// promptCreate asks the user whether to create a missing file.
-// Returns true if the user confirmed and the file was created.
+// asks the user whether to create a missing file;
+// true if confirmed and created.
 func promptCreate(path string) bool {
 	fmt.Printf("File %s does not exist. Create it? [y/n] ", path)
 	reader := bufio.NewReader(os.Stdin)
@@ -51,11 +51,9 @@ func promptCreate(path string) bool {
 
 func main() {
 
-	// Load the config file
 	// TODO: Integrate config at some point?
 	// cfg = readConfig()
 
-	// Parse flags and positional args
 	var positional string
 	for _, arg := range os.Args[1:] {
 		switch arg {
@@ -72,7 +70,6 @@ func main() {
 
 	filename := resolveFilePath(positional)
 
-	// If the file doesn't exist, prompt to create it
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if !promptCreate(filename) {
 			return

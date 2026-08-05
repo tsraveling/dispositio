@@ -30,19 +30,15 @@ type plannerViewModel struct {
 	currentModal modal
 }
 
-// itemIndex returns the index into prj.items for the current cursor,
-// or -1 if the cursor is on the meta item.
 func (m *plannerViewModel) itemIndex() int {
 	return m.cursor - 1
 }
 
-// onMeta returns true if the cursor is on the meta start-date item.
 func (m *plannerViewModel) onMeta() bool {
 	return m.cursor == 0
 }
 
-// isHoveringMeta returns true if the cursor is currently over the meta item
-// and we're in normal mode (i.e. meta controls should be shown/active).
+// cursor on meta in normal mode, i.e. meta controls active.
 func (m *plannerViewModel) isHoveringMeta() bool {
 	return m.cursor == 0 && m.mode == normal
 }
@@ -87,8 +83,6 @@ func (m *plannerViewModel) gotoDetail() {
 	}
 }
 
-// insertItemAt inserts a new empty item at the given index in prj.items
-// and enters editing mode.
 func (m *plannerViewModel) insertItemAt(idx int) tea.Cmd {
 	newItem := milestone{title: "", duration: 1}
 
@@ -123,7 +117,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = msg
 	}
 
-	// Handle detail messages.
 	if _, ok := msg.(detailHelpMsg); ok {
 		m.currentModal = newDetailHelpModal()
 		return m, nil
@@ -138,7 +131,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if _, ok := msg.(detailItemCompletedMsg); ok {
-		// Find the index of the completed item
 		completedIdx := -1
 		for i := range m.prj.items {
 			if &m.prj.items[i] == m.detail.item {
@@ -148,7 +140,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if completedIdx >= 0 {
-			// Find the first active (non-finished) item
 			activeIdx := -1
 			for i, it := range m.prj.items {
 				if it.finished.IsZero() {
@@ -184,7 +175,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if uncompletedIdx >= 0 {
-			// Find the last completed item
 			lastFinishedIdx := -1
 			for i, it := range m.prj.items {
 				if !it.finished.IsZero() {
@@ -192,7 +182,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			// If there are completed items after this one, move it after them
 			if lastFinishedIdx > uncompletedIdx {
 				uncompleted := m.prj.items[uncompletedIdx]
 				m.prj.items = append(m.prj.items[:uncompletedIdx], m.prj.items[uncompletedIdx+1:]...)
@@ -213,7 +202,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// Route to detail panel if active.
 	if m.detail != nil {
 		var cmd tea.Cmd
 		*m.detail, cmd = m.detail.Update(msg)
@@ -221,7 +209,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.mode {
-	// SECTION: Title Editing Mode
 	case editingTitle:
 		idx := m.itemIndex()
 		switch msg := msg.(type) {
@@ -250,13 +237,11 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Forward to text input
 		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		m.prj.items[idx].title = m.input.Value()
 		return m, cmd
 
-	// SECTION: Project Name Editing Mode
 	case editingProjectName:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -277,7 +262,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.input, cmd = m.input.Update(msg)
 		return m, cmd
 
-	// SECTION: Confirming Deletion Mode
 	case confirmingDeletion:
 		idx := m.itemIndex()
 		switch msg := msg.(type) {
@@ -300,7 +284,6 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	// SECTION: Normal input mode
 	case normal:
 		maxCursor := len(m.prj.items) // 0=meta, 1..N=items
 		switch msg := msg.(type) {
@@ -414,11 +397,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// SECTION: Rendering
-
 func (m plannerViewModel) plannerView() string {
-
-	// Set up the local styles for this view
 	selectedStyle := lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 	fadeStyle := lipgloss.NewStyle().Foreground(fadeColor)
@@ -450,7 +429,6 @@ func (m plannerViewModel) plannerView() string {
 			cursorRow = len(lines)
 		}
 
-		// Project title
 		titleText := strings.ToUpper(m.prj.name)
 		if m.mode == editingProjectName {
 			lines = append(lines, m.input.View())
@@ -462,10 +440,8 @@ func (m plannerViewModel) plannerView() string {
 			lines = append(lines, dimStyle.Render("e to set project name"))
 		}
 
-		// Extra space between title and start date
 		lines = append(lines, "")
 
-		// Start date
 		label := "Project started: " + fmtFullDate(startDate)
 		lines = append(lines, style.Render(label))
 		if m.isHoveringMeta() {
@@ -477,13 +453,11 @@ func (m plannerViewModel) plannerView() string {
 	}
 	itemsStart := len(lines) // line index where items begin
 
-	// If there are no items, show a hint
 	if len(m.prj.items) == 0 {
 		lines = append(lines, dimStyle.Render("There are no items in this plan. Press 'a' to add one."))
 		return strings.Join(lines, "\n") + "\n"
 	}
 
-	// Iterate through the items in the project
 	for i, it := range m.prj.items {
 		if i == m.itemIndex() {
 			cursorRow = row + itemsStart
@@ -493,10 +467,8 @@ func (m plannerViewModel) plannerView() string {
 		itemStart := monday.AddDate(0, 0, weekRow*7)
 		renderWeeks := it.actualDuration(itemStart)
 
-		// Iterate for as many weeks as the item should be rendered
 		for w := range renderWeeks {
 
-			// Get the date of the first monday, and the week of the year
 			// TODO: Add start of week day to config.ini
 			weekStart := monday.AddDate(0, 0, weekRow*7)
 			wsYear, week := weekStart.ISOWeek()
@@ -513,7 +485,6 @@ func (m plannerViewModel) plannerView() string {
 				}
 			}
 
-			// Assemble the date, MM.DD
 			// TODO: Add EU-style dates to config.ini
 			date := fmt.Sprintf("%d.%d", int(weekStart.Month()), weekStart.Day())
 
@@ -552,18 +523,15 @@ func (m plannerViewModel) plannerView() string {
 
 			if w == 0 {
 				if m.mode == editingTitle && i == m.itemIndex() {
-					// IF EDITING: Show input.
 					rightSide = rightStyle.Render("-") + m.input.View()
 				} else if m.mode == confirmingDeletion && i == m.itemIndex() {
-					// IF DELETING: Show confirmation.
 					rightSide = rightStyle.Render(symbol+"  ") + deleteStyle.Render("Delete? y/n")
 				} else if m.detail != nil && &m.prj.items[i] == m.detail.item {
-					// IF OPEN IN DETAIL: Show a long arrow instead of the title.
+					// open in detail: long arrow instead of the title
 					arrowLen := max(2, panelWidth-len(leftSide)-3)
 					arrow := strings.Repeat("-", arrowLen-1) + ">"
 					rightSide = rightStyle.Render(symbol + "  " + arrow)
 				} else {
-					// Otherwise just show the normal title.
 					dateStr := ""
 					if ds := it.dateString(); ds != "" {
 						dateStr = " " + dimStyle.Render(ds)
@@ -585,8 +553,7 @@ func (m plannerViewModel) plannerView() string {
 		}
 	}
 
-	// Grab only the chunk of them that are currently visible in the viewport,
-	// and then just display that.
+	// Window the lines so the cursor row stays in the viewport.
 	viewHeight := cfg.wh
 	contentHeight := len(lines)
 	if viewHeight > 0 && contentHeight > viewHeight {

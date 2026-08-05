@@ -9,8 +9,6 @@ import (
 )
 
 type config struct {
-
-	// Config file
 	someValue string
 
 	// Window dimensions
@@ -45,22 +43,18 @@ func expandPath(path string) string {
 }
 
 func readConfig() config {
-	// Get home
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
 
-	// Path to config
 	configPath := filepath.Join(homeDir, ".config", "dispositio", "config.ini")
 
-	// Load the INI file
 	cfg_file, err := ini.Load(configPath)
 	if err != nil {
 		panic(err)
 	}
 
-	// Read values
 	ret := config{ww: 30}
 	section := cfg_file.Section("general")
 

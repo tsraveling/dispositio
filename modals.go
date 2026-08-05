@@ -11,10 +11,9 @@ type modalType string
 var modalNone modalType = ""
 var modalCompleteItem modalType = "complete-item"
 
-// modalCloseMsg is sent by any modal to request closing itself.
+// sent by a modal to request closing itself.
 type modalCloseMsg struct{}
 
-// modalConfig holds layout parameters for a modal.
 type modalConfig struct {
 	w       int
 	h       int
@@ -22,21 +21,19 @@ type modalConfig struct {
 	yOffset int
 }
 
-// modal defines the interface all modals must satisfy.
 type modal interface {
 	Update(msg tea.Msg) (modal, tea.Cmd)
 	View() string
 	Config() modalConfig
 }
 
-// modalUpdate routes an update to the active modal.
-// Returns nil modal if esc was pressed (closing it).
+// routes an update to the active modal; returns nil modal on esc,
+// which closes any modal.
 func modalUpdate(m modal, msg tea.Msg) (modal, tea.Cmd) {
 	if m == nil {
 		return nil, nil
 	}
 
-	// Any modal closes on esc
 	if msg, ok := msg.(tea.KeyMsg); ok && msg.String() == "esc" {
 		return nil, nil
 	}
@@ -44,7 +41,7 @@ func modalUpdate(m modal, msg tea.Msg) (modal, tea.Cmd) {
 	return m.Update(msg)
 }
 
-// modalView composites the active modal over the background view string.
+// composites the active modal over the background view string.
 func modalView(m modal, bg string) string {
 	if m == nil {
 		return bg

@@ -30,7 +30,6 @@ func newConfirm(kind confirmKind, prompt string) confirm {
 	return confirm{kind: kind, prompt: prompt}
 }
 
-// is a confirm waiting for response?
 func (c confirm) active() bool { return c.kind != confirmNone }
 
 func (c confirm) handle(msg tea.Msg) confirmResult {
