@@ -1,25 +1,11 @@
 package main
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
-
-	"gopkg.in/ini.v1"
-)
-
 // @region app:config -- CONFIG + WINDOW DIMENSIONS
 
 type config struct {
-	someValue string
-
 	// Window dimensions
 	ww int
 	wh int
-}
-
-func (c *config) fullWidth() int {
-	return c.ww - 8
 }
 
 // TODO: Make these configurable
@@ -32,36 +18,3 @@ func (c *config) updateWH(wh int) {
 }
 
 var cfg config
-
-func expandPath(path string) string {
-	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return path
-		}
-		return filepath.Join(home, path[2:])
-	}
-	return path
-}
-
-func readConfig() config {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
-	configPath := filepath.Join(homeDir, ".config", "dispositio", "config.ini")
-
-	cfg_file, err := ini.Load(configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	ret := config{ww: 30}
-	section := cfg_file.Section("general")
-
-	// FIXME: If we don't have anything to stick in here, just delete the whole thing
-	ret.someValue = expandPath(section.Key("someValue").String())
-
-	return ret
-}

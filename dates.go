@@ -15,3 +15,6 @@ func weekdaysBetween(from, to time.Time) int {
 	}
 	return n
 }
+
+// clock indirection so date-dependent logic is testable
+var now = time.Now

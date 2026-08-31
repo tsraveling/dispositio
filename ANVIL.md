@@ -15,6 +15,7 @@
 - When adding subtasks, enter to next one
 - Movement shortcuts e.g. G, gg etc.
 - Give detail description a max width that looks good
+- `i` should start editing the item but with the cursor at the beginning
 
 ## NEXT
 

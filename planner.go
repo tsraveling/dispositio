@@ -410,7 +410,7 @@ func (m plannerViewModel) plannerView() string {
 	normalStyle := lipgloss.NewStyle().Foreground(textColor)
 	fadeStyle := lipgloss.NewStyle().Foreground(fadeColor)
 	deleteStyle := lipgloss.NewStyle().Foreground(warningColor).Bold(true)
-	nowYear, nowWeek := time.Now().ISOWeek()
+	nowYear, nowWeek := now().ISOWeek()
 
 	// Use the project start date as the base Monday
 	startDate := m.prj.startDate
