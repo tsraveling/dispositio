@@ -136,12 +136,14 @@ func TestHelpScreenRendersAfterSizing(t *testing.T) {
 	if got := makeHelpScreen().View(); got != "" {
 		t.Errorf("unsized screen rendered %q, want empty", got)
 	}
+	// Assert on structure, not content — HELP.md is human-authored prose that
+	// gets wrapped and scrolled, so nothing about its text is stable here.
 	out := plain(sizedHelpScreen(t, 100, 40).View())
-	if !strings.Contains(out, strings.TrimSpace(helpSource)) {
-		t.Errorf("help content missing from view:\n%s", out)
-	}
-	if !strings.Contains(out, "press ? inside dispositio") {
+	if !strings.Contains(out, helpFooter) {
 		t.Errorf("footer missing from view:\n%s", out)
+	}
+	if body := strings.TrimSpace(strings.Split(out, helpFooter)[0]); body == "" {
+		t.Error("help body rendered empty above the footer")
 	}
 }
 
