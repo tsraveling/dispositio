@@ -70,7 +70,7 @@ func (i *milestone) dateString() string {
 func (i *milestone) actualWeeks(itemStart time.Time) int {
 	end := i.finished
 	if end.IsZero() {
-		end = time.Now()
+		end = now()
 	}
 	days := int(end.Sub(itemStart).Hours() / 24)
 	weeks := days / 7
@@ -138,7 +138,7 @@ type project struct {
 	name         string
 	startDate    time.Time // zero value means unset
 	items        []milestone
-	usesTimeline bool
+	usesTimeline bool // Non-timeline projects coming soon!
 }
 
 const dateFormat = "Jan 2 2006"
@@ -308,7 +308,8 @@ func parseItems(lines []string) []milestone {
 
 // @region data:save -- MARKDOWN SERIALIZE (save)
 
-func saveProject(p project) error {
+// serializes a project to its markdown representation.
+func renderProject(p project) string {
 	var b strings.Builder
 
 	if p.name != "" || !p.startDate.IsZero() {
@@ -367,7 +368,11 @@ func saveProject(p project) error {
 		}
 	}
 
-	return os.WriteFile(p.filePath, []byte(b.String()), 0644)
+	return b.String()
+}
+
+func saveProject(p project) error {
+	return os.WriteFile(p.filePath, []byte(renderProject(p)), 0644)
 }
 
 func (p *project) save() error {
@@ -384,7 +389,7 @@ func loadProject(fp string) (*project, error) {
 	parseProject(string(data), &prj)
 
 	if prj.startDate.IsZero() {
-		prj.startDate = time.Now()
+		prj.startDate = now()
 	}
 
 	return &prj, nil

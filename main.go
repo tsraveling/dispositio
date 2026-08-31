@@ -8,10 +8,18 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-isatty"
 )
 
+// renders HELP.md to a scrollable screen on a terminal, or plain text when
+// piped or redirected.
 func printHelp() {
-	// TODO: Fill out help stuff here
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		fmt.Println(renderHelp(helpSource, maxWidth))
+		return
+	}
+	p := tea.NewProgram(makeHelpScreen(), tea.WithAltScreen())
+	p.Run()
 }
 
 // @region app:files -- FILE PATH RESOLUTION + CREATE PROMPT

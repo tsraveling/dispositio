@@ -209,7 +209,7 @@ func (d *detailViewModel) applyConfirm() tea.Cmd {
 		return func() tea.Msg { return detailSaveMsg{} }
 	case confirmToggleCompletion:
 		if d.item.finished.IsZero() {
-			d.item.finished = time.Now()
+			d.item.finished = now()
 			return func() tea.Msg { return detailItemCompletedMsg{} }
 		}
 		d.item.finished = time.Time{}
@@ -611,9 +611,9 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 		}
 	} else if item.finished.IsZero() {
 		endDate := itemStart.AddDate(0, 0, item.duration*7-1)
-		daysUntil := int(time.Until(endDate).Hours() / 24)
+		daysUntil := int(endDate.Sub(now()).Hours() / 24)
 		endStyle := dimStyle
-		if endDate.Before(time.Now()) {
+		if endDate.Before(now()) {
 			endStyle = warningStyle
 		}
 		itemStatus = endStyle.Render("Due: " + fmtFullDate(endDate))
@@ -674,7 +674,7 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 			rate = "All subtasks complete!"
 		} else {
 			endDate := itemStart.AddDate(0, 0, item.duration*7-1)
-			weekdaysLeft := weekdaysBetween(time.Now(), endDate)
+			weekdaysLeft := weekdaysBetween(now(), endDate)
 			if weekdaysLeft < 1 {
 				weekdaysLeft = 1
 			}
