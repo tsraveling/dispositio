@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.9 - 2026-08-31
+#### Bug Fixes
+- sets up codecov (#6) - (9fdb222) - Tim Raveling
+- adds automated test coverage (#5) - (c7636cb) - Tim Raveling
+#### Documentation
+- added region tags - (f6cf8e5) - Tim Raveling
+- readme update to link to systemist - (471bdd8) - Tim Raveling
+- comment tweaking - (b950b14) - Tim Raveling
+- added screenshot - (0d4e091) - Tim Raveling
+- README bump - (bc01c30) - Tim Raveling
+
+- - -
+
 ## v0.2.8 - 2026-07-06
 #### Bug Fixes
 - removed need for config - (5ff02f7) - Tim Raveling
