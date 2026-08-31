@@ -8,14 +8,6 @@ import (
 
 // @region modal:core -- MODAL INTERFACE + OVERLAY
 
-type modalType string
-
-var modalNone modalType = ""
-var modalCompleteItem modalType = "complete-item"
-
-// sent by a modal to request closing itself.
-type modalCloseMsg struct{}
-
 type modalConfig struct {
 	w       int
 	h       int
@@ -56,4 +48,15 @@ func modalView(m modal, bg string) string {
 		overlay.Center, overlay.Center,
 		c.xOffset, c.yOffset,
 	)
+}
+
+// overlays a save failure over the composed view. The user keeps their work on
+// screen; the message clears on the next successful save.
+func saveErrorView(view string, err error) string {
+	if err == nil {
+		return view
+	}
+	box := errorBoxStyle(boxWidth(cfg.ww) - 8).Render("Could not save: " + err.Error())
+	padded := lipgloss.Place(cfg.ww, cfg.wh, lipgloss.Left, lipgloss.Top, view)
+	return overlay.Composite(box, padded, overlay.Center, overlay.Center, 0, 0)
 }

@@ -10,8 +10,6 @@ import (
 
 // @region modal:help -- HELP MODAL + KEYMAP TABLES
 
-var modalHelpType modalType = "help"
-
 // a key/description pair, or a section header when key is "".
 type helpRow struct {
 	key  string
@@ -88,9 +86,9 @@ func (m *helpModal) View() string {
 			b.WriteString(dimStyle.Render(strings.ToUpper(r.desc)) + "\n")
 			continue
 		}
-		b.WriteString(fmt.Sprintf("%s  %s\n",
+		fmt.Fprintf(&b, "%s  %s\n",
 			keyStyle.Render(fmt.Sprintf("%-12s", r.key)),
-			descStyle.Render(r.desc)))
+			descStyle.Render(r.desc))
 	}
 	b.WriteString("\n" + dimStyle.Italic(true).Render("any key to close"))
 

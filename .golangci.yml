@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - revive
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  # report every occurrence, not the first three; a truncated list hides how
+  # much of a pattern is actually there
+  max-same-issues: 0
+  max-issues-per-linter: 0

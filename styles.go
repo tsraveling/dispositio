@@ -33,7 +33,6 @@ var (
 	dimStyle         = lipgloss.NewStyle().Foreground(dimColor)
 	warningStyle     = lipgloss.NewStyle().Foreground(warningColor)
 	fadeStyle        = lipgloss.NewStyle().Foreground(fadeColor)
-	textStyle        = lipgloss.NewStyle().Foreground(textColor)
 	primaryStyle     = lipgloss.NewStyle().Foreground(primaryColor)
 	highlightedStyle = lipgloss.NewStyle().Foreground(highlightColor).Bold(true)
 	titleStyle       = lipgloss.NewStyle().Bold(true).Foreground(primaryColor)
@@ -86,10 +85,10 @@ func outputBoxStyle(w int, done bool) lipgloss.Style {
 		Width(w - 2)
 }
 
-func clampLines(s string, max int) string {
+func clampLines(s string, n int) string {
 	lines := strings.Split(s, "\n")
-	if len(lines) <= max {
+	if len(lines) <= n {
 		return s
 	}
-	return strings.Join(lines[len(lines)-max:], "\n")
+	return strings.Join(lines[len(lines)-n:], "\n")
 }
