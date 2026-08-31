@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -141,5 +142,27 @@ func TestCompleteItemModal(t *testing.T) {
 
 	if out := plain(m.View()); !strings.Contains(out, "Proto Map") {
 		t.Errorf("view missing the item title:\n%s", out)
+	}
+}
+
+// a save failure must be visible without wiping out the work underneath
+func TestSaveErrorView(t *testing.T) {
+	withWidth(t, 100)
+	prev := cfg.wh
+	cfg.updateWH(30)
+	t.Cleanup(func() { cfg.wh = prev })
+
+	const view = "planner contents"
+
+	if got := saveErrorView(view, nil); got != view {
+		t.Errorf("no error should pass the view through unchanged, got %q", got)
+	}
+
+	out := plain(saveErrorView(view, errors.New("permission denied")))
+	if !strings.Contains(out, "Could not save") {
+		t.Errorf("error banner missing:\n%s", out)
+	}
+	if !strings.Contains(out, "permission denied") {
+		t.Errorf("underlying error missing:\n%s", out)
 	}
 }

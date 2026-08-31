@@ -668,7 +668,6 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 
 		// The rate/status line under the bar is only meaningful for the active
 		// (current) milestone.
-		progressBlock = bar
 		var rate string
 		if incomplete == 0 {
 			rate = "All subtasks complete!"
@@ -687,8 +686,8 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 			if isCurrent {
 				rate += " remaining"
 			}
-			progressBlock = bar + "\n" + dimStyle.Render(rate)
 		}
+		progressBlock = bar + "\n" + dimStyle.Render(rate)
 	}
 
 	// Assemble the body as a flat list of logical lines, tracking which line

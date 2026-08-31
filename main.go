@@ -19,7 +19,9 @@ func printHelp() {
 		return
 	}
 	p := tea.NewProgram(makeHelpScreen(), tea.WithAltScreen())
-	p.Run()
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error showing help:", err)
+	}
 }
 
 // @region app:files -- FILE PATH RESOLUTION + CREATE PROMPT
@@ -50,7 +52,10 @@ func promptCreate(path string) bool {
 	}
 	dir := filepath.Dir(path)
 	if dir != "." && dir != "" {
-		os.MkdirAll(dir, 0o755)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Printf("Error creating directory: %s\n", err.Error())
+			return false
+		}
 	}
 	if err := os.WriteFile(path, []byte(""), 0o644); err != nil {
 		fmt.Printf("Error creating file: %s\n", err.Error())
@@ -98,5 +103,8 @@ func main() {
 	m, _ = makePlannerViewModel(prj)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	p.Run()
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
 }

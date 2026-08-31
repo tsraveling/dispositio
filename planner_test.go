@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"path/filepath"
 	"testing"
 )
 
@@ -253,5 +255,41 @@ func TestInsertItemIntoEmptyProject(t *testing.T) {
 	}
 	if m.prj.items[0].duration != 1 {
 		t.Errorf("duration = %d, want 1", m.prj.items[0].duration)
+	}
+}
+
+// a failing save must be recorded rather than dropped or panicked on: the file
+// is the only copy of the user's work
+func TestPersistRecordsSaveFailure(t *testing.T) {
+	m, _ := makePlannerViewModel(projectFixture(t))
+
+	m.prj.filePath = filepath.Join(t.TempDir(), "ROADMAP.md")
+	m.persist()
+	if m.saveErr != nil {
+		t.Fatalf("valid path should save cleanly, got %v", m.saveErr)
+	}
+
+	// a path whose parent is a file, not a directory, cannot be written
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := writeFile(blocker, "x"); err != nil {
+		t.Fatal(err)
+	}
+	m.prj.filePath = filepath.Join(blocker, "ROADMAP.md")
+	m.persist()
+	if m.saveErr == nil {
+		t.Error("expected a save error for an unwritable path")
+	}
+}
+
+// a later successful save clears a previously recorded failure
+func TestPersistClearsPreviousError(t *testing.T) {
+	m, _ := makePlannerViewModel(projectFixture(t))
+	m.saveErr = errors.New("stale failure")
+
+	m.prj.filePath = filepath.Join(t.TempDir(), "ROADMAP.md")
+	m.persist()
+	if m.saveErr != nil {
+		t.Errorf("successful save left an error: %v", m.saveErr)
 	}
 }

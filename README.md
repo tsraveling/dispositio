@@ -2,7 +2,6 @@
 
 [![Tests](https://github.com/tsraveling/dispositio/actions/workflows/test.yml/badge.svg)](https://github.com/tsraveling/dispositio/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/tsraveling/dispositio/branch/main/graph/badge.svg)](https://codecov.io/gh/tsraveling/dispositio)
-[![Go Report Card](https://goreportcard.com/badge/github.com/tsraveling/dispositio)](https://goreportcard.com/report/github.com/tsraveling/dispositio)
 [![Go Reference](https://pkg.go.dev/badge/github.com/tsraveling/dispositio.svg)](https://pkg.go.dev/github.com/tsraveling/dispositio)
 
 > **For more free software, or to check out my newsletter about useful tools and systems, head over to [The Systemist](https://systemist.net).**

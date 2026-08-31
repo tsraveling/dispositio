@@ -30,6 +30,13 @@ type plannerViewModel struct {
 	preEditTitle string // original title before editing, for esc revert
 	isNewItem    bool   // true when editing a newly added item (delete on esc)
 	currentModal modal
+	saveErr      error // last save failure, surfaced in the view until the next save
+}
+
+// writes the project to disk, recording any failure for display. Save errors
+// must not be dropped: the file on disk is the only copy of the user's work.
+func (m *plannerViewModel) persist() {
+	m.saveErr = m.prj.save()
 }
 
 func (m *plannerViewModel) itemIndex() int {
@@ -130,7 +137,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if _, ok := msg.(detailSaveMsg); ok {
-		m.prj.save()
+		m.persist()
 		return m, nil
 	}
 
@@ -162,7 +169,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.detail = nil
-		m.prj.save()
+		m.persist()
 		return m, nil
 	}
 
@@ -195,7 +202,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.detail = nil
-		m.prj.save()
+		m.persist()
 		return m, nil
 	}
 
@@ -235,10 +242,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prj.items[idx].title = m.input.Value()
 				m.mode = normal
 				m.input.Blur()
-				err := m.prj.save()
-				if err != nil {
-					panic(err)
-				}
+				m.persist()
 				return m, nil
 			}
 		}
@@ -260,7 +264,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.prj.name = m.input.Value()
 				m.mode = normal
 				m.input.Blur()
-				m.prj.save()
+				m.persist()
 				return m, nil
 			}
 		}
@@ -282,7 +286,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor = 0
 				}
 				m.mode = normal
-				m.prj.save()
+				m.persist()
 				return m, nil
 			case "n", "esc":
 				m.mode = normal
@@ -324,16 +328,15 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input.CursorEnd()
 					m.input.Focus()
 					return m, textinput.Blink
-				} else {
-					idx := m.itemIndex()
-					m.preEditTitle = m.prj.items[idx].title
-					m.isNewItem = false
-					m.mode = editingTitle
-					m.input.SetValue(m.prj.items[idx].title)
-					m.input.CursorEnd()
-					m.input.Focus()
-					return m, textinput.Blink
 				}
+				idx := m.itemIndex()
+				m.preEditTitle = m.prj.items[idx].title
+				m.isNewItem = false
+				m.mode = editingTitle
+				m.input.SetValue(m.prj.items[idx].title)
+				m.input.CursorEnd()
+				m.input.Focus()
+				return m, textinput.Blink
 			case "d":
 				if !m.onMeta() && len(m.prj.items) > 0 {
 					m.mode = confirmingDeletion
@@ -351,48 +354,48 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.onMeta() && idx > 0 {
 					m.prj.items[idx], m.prj.items[idx-1] = m.prj.items[idx-1], m.prj.items[idx]
 					m.cursor--
-					m.prj.save()
+					m.persist()
 				}
 			case "shift+down", "J":
 				idx := m.itemIndex()
 				if !m.onMeta() && idx < len(m.prj.items)-1 {
 					m.prj.items[idx], m.prj.items[idx+1] = m.prj.items[idx+1], m.prj.items[idx]
 					m.cursor++
-					m.prj.save()
+					m.persist()
 				}
 			case "left", "h":
 				if m.isHoveringMeta() {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -1)
-					m.prj.save()
+					m.persist()
 				}
 			case "enter":
 				m.gotoDetail()
 			case "right", "l":
 				if m.isHoveringMeta() {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 1)
-					m.prj.save()
+					m.persist()
 				} else if !m.onMeta() {
 					m.gotoDetail()
 				}
 			case "shift+left", "H":
 				if m.isHoveringMeta() {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -7)
-					m.prj.save()
+					m.persist()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
 					if m.prj.items[idx].duration > 1 {
 						m.prj.items[idx].duration--
-						m.prj.save()
+						m.persist()
 					}
 				}
 			case "shift+right", "L":
 				if m.isHoveringMeta() {
 					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 7)
-					m.prj.save()
+					m.persist()
 				} else if !m.onMeta() {
 					idx := m.itemIndex()
 					m.prj.items[idx].duration++
-					m.prj.save()
+					m.persist()
 				}
 			case "ctrl+c", "q":
 				return m, tea.Quit
@@ -605,15 +608,15 @@ func (m plannerViewModel) View() string {
 		}
 
 		combined := lipgloss.JoinHorizontal(lipgloss.Top, plannerCol, detailCol)
-		return modalView(m.currentModal, combined)
+		return saveErrorView(modalView(m.currentModal, combined), m.saveErr)
 	}
 
 	// Narrow mode: swap views
 	if m.detail != nil {
 		detailStr := m.detail.View(cfg.ww, cfg.wh)
-		return modalView(m.currentModal, detailStr)
+		return saveErrorView(modalView(m.currentModal, detailStr), m.saveErr)
 	}
 
 	paddedPlanner := lipgloss.NewStyle().PaddingLeft(2).Render(plannerStr)
-	return modalView(m.currentModal, paddedPlanner)
+	return saveErrorView(modalView(m.currentModal, paddedPlanner), m.saveErr)
 }

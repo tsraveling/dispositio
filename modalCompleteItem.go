@@ -22,7 +22,7 @@ func (m *completeItemModal) Config() modalConfig {
 	return modalConfig{w: 40, h: 5, xOffset: 0, yOffset: 0}
 }
 
-func (m *completeItemModal) Update(msg tea.Msg) (modal, tea.Cmd) {
+func (m *completeItemModal) Update(_ tea.Msg) (modal, tea.Cmd) {
 	return m, nil
 }
 
