@@ -87,7 +87,7 @@ func (m *plannerViewModel) detailPanelWidth() int {
 func (m *plannerViewModel) gotoDetail() {
 	if !m.onMeta() {
 		idx := m.itemIndex()
-		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx), m.prj.isCurrent(idx))
+		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx), m.prj.isCurrent(idx), m.prj.timeline)
 		m.detail = &dvm
 	}
 }
@@ -606,7 +606,7 @@ func (m plannerViewModel) View() string {
 				itemStart = m.prj.itemStartDate(idx)
 				isCurrent = m.prj.isCurrent(idx)
 			}
-			detailCol = detailViewInactive(it, detailWidth, cfg.wh, itemStart, isCurrent)
+			detailCol = detailViewInactive(it, detailWidth, cfg.wh, itemStart, isCurrent, m.prj.timeline)
 		}
 
 		combined := lipgloss.JoinHorizontal(lipgloss.Top, plannerCol, detailCol)
