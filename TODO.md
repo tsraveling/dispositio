@@ -15,5 +15,5 @@
 - [x] Item detail view in a tab system if too narrow
 - [ ] Show first few subtasks if there's space in the item block on the roadmap view
 - [ ] Add breaks
-- [ ] Display project title somewhere
-- [ ] Add help modal
+- [x] Display project title somewhere
+- [x] Add help modal

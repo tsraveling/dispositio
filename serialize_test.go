@@ -66,6 +66,21 @@ func TestRenderProjectMetadataBlock(t *testing.T) {
 			project{name: "Venice", startDate: mustDate(t, "Apr 28 2026")},
 			[]string{"Project Name: Venice", "Project Start: Apr 28 2026"}, nil,
 		},
+		{
+			"weeks timeline writes no Timeline line",
+			project{name: "Venice", timeline: timelineWeeks},
+			[]string{"Project Name: Venice"}, []string{"Timeline"},
+		},
+		{
+			"none timeline writes Timeline: None after start date",
+			project{startDate: mustDate(t, "Apr 28 2026"), timeline: timelineNone},
+			[]string{"Project Start: Apr 28 2026\nTimeline: None\n"}, nil,
+		},
+		{
+			"none timeline alone still writes a block",
+			project{timeline: timelineNone},
+			[]string{"```\nTimeline: None\n```"}, nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -140,6 +140,12 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.persist()
 		return m, nil
 	}
+	if s, ok := msg.(settingsSavedMsg); ok {
+		m.prj.startDate = s.startDate
+		m.prj.timeline = s.timeline
+		m.persist()
+		return m, nil
+	}
 
 	if _, ok := msg.(detailItemCompletedMsg); ok {
 		completedIdx := -1
@@ -344,11 +350,9 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "?":
 				m.currentModal = newPlannerHelpModal()
 				return m, nil
-			case "M":
-				if !m.onMeta() {
-					m.currentModal = newCompleteItemModal(&m.prj.items[m.itemIndex()])
-					return m, nil
-				}
+			case "s":
+				m.currentModal = newSettingsModal(&m.prj)
+				return m, nil
 			case "shift+up", "K":
 				idx := m.itemIndex()
 				if !m.onMeta() && idx > 0 {
@@ -363,25 +367,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor++
 					m.persist()
 				}
-			case "left", "h":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -1)
-					m.persist()
-				}
-			case "enter":
+			case "enter", "right", "l":
 				m.gotoDetail()
-			case "right", "l":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 1)
-					m.persist()
-				} else if !m.onMeta() {
-					m.gotoDetail()
-				}
 			case "shift+left", "H":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -7)
-					m.persist()
-				} else if !m.onMeta() {
+				if !m.onMeta() {
 					idx := m.itemIndex()
 					if m.prj.items[idx].duration > 1 {
 						m.prj.items[idx].duration--
@@ -389,10 +378,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "shift+right", "L":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 7)
-					m.persist()
-				} else if !m.onMeta() {
+				if !m.onMeta() {
 					idx := m.itemIndex()
 					m.prj.items[idx].duration++
 					m.persist()
@@ -456,7 +442,7 @@ func (m plannerViewModel) plannerView() string {
 		label := "Project started: " + fmtFullDate(startDate)
 		lines = append(lines, style.Render(label))
 		if m.isHoveringMeta() {
-			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))
+			lines = append(lines, dimStyle.Render("s: project settings"))
 		} else {
 			lines = append(lines, "")
 		}
