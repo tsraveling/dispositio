@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -291,5 +292,53 @@ func TestPersistClearsPreviousError(t *testing.T) {
 	m.persist()
 	if m.saveErr != nil {
 		t.Errorf("successful save left an error: %v", m.saveErr)
+	}
+}
+
+// None mode: no timeline column, planned duration only, no overdue marks
+func TestPlannerViewTimelineNone(t *testing.T) {
+	withWidth(t, 100)
+	defer stubNow(t, mustDate(t, "Sep 1 2026"))() // long past every due date
+
+	p := projectFixture(t)
+	p.startDate = mustDate(t, "Jan 5 2026")
+	p.timeline = timelineNone
+	m, _ := makePlannerViewModel(p)
+	m.cursor = 2
+	out := plain(m.plannerView())
+
+	if strings.Contains(out, "W2") || strings.Contains(out, "1.5") {
+		t.Errorf("timeline column rendered in None mode:\n%s", out)
+	}
+	if strings.Contains(out, "⚠") {
+		t.Errorf("overdue mark rendered in None mode:\n%s", out)
+	}
+	if !strings.Contains(out, "Project started: Mon, Jan 5, 2026") {
+		t.Errorf("start date line missing:\n%s", out)
+	}
+	if !strings.Contains(out, "first (6.8)") {
+		t.Errorf("finished tag missing:\n%s", out)
+	}
+
+	// second (1w, current, overdue) is a single row; third (3w) is title + 2 fillers
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	var items []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if strings.HasPrefix(l, "✓") || strings.HasPrefix(l, "⬤") || strings.HasPrefix(l, "◯") || l == "⚬" {
+			items = append(items, l)
+		}
+	}
+	want := []string{"✓  first (6.8)", "⬤  second", "◯  third", "⚬", "⚬"}
+	if strings.Join(items, "|") != strings.Join(want, "|") {
+		t.Errorf("rows = %q, want %q\n%s", items, want, out)
+	}
+
+	// Weeks mode on the same project does stretch the overdue item
+	p.timeline = timelineWeeks
+	m, _ = makePlannerViewModel(p)
+	m.cursor = 2
+	if out := plain(m.plannerView()); !strings.Contains(out, "⚠") || !strings.Contains(out, "W2") {
+		t.Errorf("weeks mode lost its timeline:\n%s", out)
 	}
 }
