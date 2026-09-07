@@ -9,7 +9,16 @@ Let's say we're making a game. "Volcano Hunter", a game about searching a vast a
 1. Run `dispositio` (or `dis` in my case) in the project root.
 2. Confirm that you want to make `ROADMAP.md`.
 3. Hit `e` to edit the project name.
-4. Actually, we started work on Volcano Hunter a few weeks ago. You can use the left and right arrows (or `hl` for Vim users) to change the project start date, optionally holding shift to change the date by a week at a time.
+
+## Project Settings
+
+We started work on Volcano Hunter a few weeks ago. You can hit `s` to open the Project Settings modal. On the project start date line, you can use the left and right arrows (or `hl` for Vim users) to change the project start date, optionally holding shift to change the date by a week at a time.
+
+You can cancel changes and close the modal with `Esc`; `Enter` commits your changes and closes the modal.
+
+## No Timeline Mode
+
+Below that is the Timeline mode setting. You can change this with `left/right/h/l`. A project with Timeline mode `None` turns off the timeline column, overdue states, and delivery estimates, and simply allows you to plan out a project in a linear fashion without worrying about calendar dates. You can still estimate duration of a given milestone but it is purely for reference, and not tracked against actual completion dates.
 
 ## Adding some milestones
 
@@ -22,8 +31,10 @@ Now we want to start planning out our game.
 
 Notice a few things here:
 
-- The leftmost column shows the estimated dates of a given milestone. The `W*` column refers to the week number out of the year. If a project extends past the end of the current year, you will see a row break showing the new year.
+- The leftmost column shows the estimated dates of a given milestone (as long as you don't switch project settings to `Timeline: None`). The `W*` column refers to the week number out of the year. If a project extends past the end of the current year, you will see a row break showing the new year.
 - Because we set the project start date as a few weeks ago, that first milestone shows some alert symbols. The duration of a milestone is one week by default; because that is the first milestone in the list, and it is not completed, Dispositio knows it is several weeks overdue! And it moves the timeline back as a result. This allows you to see how much a current delay impacts the overall timeline, including when future milestones are scheduled to start (e.g. the `Movement` milestone in the example above starts 9.7; if we delay another week it and other future milestones will get pushed back a week as well)
+
+Note that in a non-timeline project, you can still change the "duration" of a milestone, which still adjusts the number of rows it occupies in the plan. But in this case the duration is simply aesthetic; it is not tracked against actual completion dates.
 
 ## Tasks and subtasks
 
@@ -40,7 +51,7 @@ If you hit enter or `right/l` to go into "detail mode" (signified by the purple 
 Notice:
 
 - The progress bar fills out as you accomplish tasks. In theory, once it is full, you can complete the milestone (see next section).
-- There is a "tasks per weekday" readout below the progress bar. Because this milestone is overdue, it just says "do all of the tasks in a day" to get finished. But in a normal milestone, you will be able to see how many workdays each task should take on average (or tasks per workday if the ratio goes the other way) in order to meet your goals.
+- There is a "tasks per weekday" readout below the progress bar. Because this milestone is overdue, it just says "do all of the tasks in a day" to get finished. But in a normal milestone, you will be able to see how many workdays each task should take on average (or tasks per workday if the ratio goes the other way) in order to meet your goals. In non-timeline mode, this simply shows a "tasks remaining" counter.
 
 ## Completing a Milestone
 
