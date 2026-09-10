@@ -87,7 +87,7 @@ func (m *plannerViewModel) detailPanelWidth() int {
 func (m *plannerViewModel) gotoDetail() {
 	if !m.onMeta() {
 		idx := m.itemIndex()
-		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx), m.prj.isCurrent(idx))
+		dvm := makeDetailViewModel(&m.prj.items[idx], m.detailPanelWidth(), m.prj.itemStartDate(idx), m.prj.isCurrent(idx), m.prj.timeline)
 		m.detail = &dvm
 	}
 }
@@ -137,6 +137,12 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if _, ok := msg.(detailSaveMsg); ok {
+		m.persist()
+		return m, nil
+	}
+	if s, ok := msg.(settingsSavedMsg); ok {
+		m.prj.startDate = s.startDate
+		m.prj.timeline = s.timeline
 		m.persist()
 		return m, nil
 	}
@@ -344,11 +350,9 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "?":
 				m.currentModal = newPlannerHelpModal()
 				return m, nil
-			case "M":
-				if !m.onMeta() {
-					m.currentModal = newCompleteItemModal(&m.prj.items[m.itemIndex()])
-					return m, nil
-				}
+			case "s":
+				m.currentModal = newSettingsModal(&m.prj)
+				return m, nil
 			case "shift+up", "K":
 				idx := m.itemIndex()
 				if !m.onMeta() && idx > 0 {
@@ -363,25 +367,10 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor++
 					m.persist()
 				}
-			case "left", "h":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -1)
-					m.persist()
-				}
-			case "enter":
+			case "enter", "right", "l":
 				m.gotoDetail()
-			case "right", "l":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 1)
-					m.persist()
-				} else if !m.onMeta() {
-					m.gotoDetail()
-				}
 			case "shift+left", "H":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, -7)
-					m.persist()
-				} else if !m.onMeta() {
+				if !m.onMeta() {
 					idx := m.itemIndex()
 					if m.prj.items[idx].duration > 1 {
 						m.prj.items[idx].duration--
@@ -389,10 +378,7 @@ func (m plannerViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "shift+right", "L":
-				if m.isHoveringMeta() {
-					m.prj.startDate = m.prj.startDate.AddDate(0, 0, 7)
-					m.persist()
-				} else if !m.onMeta() {
+				if !m.onMeta() {
 					idx := m.itemIndex()
 					m.prj.items[idx].duration++
 					m.persist()
@@ -427,6 +413,7 @@ func (m plannerViewModel) plannerView() string {
 
 	row := 0     // Row for cursor
 	weekRow := 0 // Row for date calc
+	useTimeline := m.prj.timeline == timelineWeeks
 
 	// Meta item: project title + start date
 	panelWidth := cfg.ww/2 - 4 // account for padding; narrow mode uses full width
@@ -454,9 +441,14 @@ func (m plannerViewModel) plannerView() string {
 		lines = append(lines, "")
 
 		label := "Project started: " + fmtFullDate(startDate)
-		lines = append(lines, style.Render(label))
+		if !useTimeline && !m.onMeta() {
+			// Decorative in None mode
+			lines = append(lines, fadeStyle.Render(label))
+		} else {
+			lines = append(lines, style.Render(label))
+		}
 		if m.isHoveringMeta() {
-			lines = append(lines, dimStyle.Render("◀▶ h/l: ±1 day   ◀▶ H/L: ±1 week"))
+			lines = append(lines, dimStyle.Render("s: project settings"))
 		} else {
 			lines = append(lines, "")
 		}
@@ -477,6 +469,14 @@ func (m plannerViewModel) plannerView() string {
 		isCurrent := m.prj.isCurrent(i)
 		itemStart := monday.AddDate(0, 0, weekRow*7)
 		renderWeeks := it.actualDuration(itemStart)
+		if !useTimeline {
+			// Planned duration only; dates never stretch or shrink an item.
+			// Finished items collapse to their title row.
+			renderWeeks = it.duration
+			if !it.finished.IsZero() {
+				renderWeeks = 1
+			}
+		}
 
 		for w := range renderWeeks {
 
@@ -486,7 +486,7 @@ func (m plannerViewModel) plannerView() string {
 
 			// If item is finished, stop after the week it was completed
 			sameWeekFinish := false
-			if !it.finished.IsZero() && weekStart.After(it.finished) {
+			if useTimeline && !it.finished.IsZero() && weekStart.After(it.finished) {
 				if w == 0 {
 					// Multiple milestones finished in the same week:
 					// render a single collapsed row instead of skipping.
@@ -507,7 +507,9 @@ func (m plannerViewModel) plannerView() string {
 				leftStyle = normalStyle
 			}
 
-			if sameWeekFinish {
+			if !useTimeline {
+				leftSide = ""
+			} else if sameWeekFinish {
 				leftSide = fmt.Sprintf("--+ %7s", "")
 			} else if week == 1 {
 				// Show the 4-digit year in green; pad to keep width == 11.
@@ -523,7 +525,7 @@ func (m plannerViewModel) plannerView() string {
 			var rightSide string
 
 			// ✓ done, ⬤ current, ◯ pending, ⚠ overdue
-			overdue := isCurrent && w >= it.duration
+			overdue := useTimeline && isCurrent && w >= it.duration
 			symbol := "◯"
 			if !it.finished.IsZero() {
 				symbol = "✓"
@@ -604,7 +606,7 @@ func (m plannerViewModel) View() string {
 				itemStart = m.prj.itemStartDate(idx)
 				isCurrent = m.prj.isCurrent(idx)
 			}
-			detailCol = detailViewInactive(it, detailWidth, cfg.wh, itemStart, isCurrent)
+			detailCol = detailViewInactive(it, detailWidth, cfg.wh, itemStart, isCurrent, m.prj.timeline)
 		}
 
 		combined := lipgloss.JoinHorizontal(lipgloss.Top, plannerCol, detailCol)

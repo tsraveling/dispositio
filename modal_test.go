@@ -27,7 +27,7 @@ func TestModalUpdate(t *testing.T) {
 	})
 
 	t.Run("non-key messages reach the modal", func(t *testing.T) {
-		m := newCompleteItemModal(&milestone{title: "M"})
+		m := newSettingsModal(&project{})
 		got, _ := modalUpdate(m, tea.WindowSizeMsg{Width: 80, Height: 24})
 		if got == nil {
 			t.Error("modal was closed by a window size message")
@@ -121,27 +121,6 @@ func TestHelpRowsAreWellFormed(t *testing.T) {
 				t.Errorf("%s row %d has an empty description", name, i)
 			}
 		}
-	}
-}
-
-func TestCompleteItemModal(t *testing.T) {
-	item := &milestone{title: "Proto Map"}
-	m := newCompleteItemModal(item)
-
-	if got := m.Config(); got.w != 40 || got.h != 5 {
-		t.Errorf("config = %+v, want w=40 h=5", got)
-	}
-
-	got, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
-	if got == nil {
-		t.Error("modal closed itself")
-	}
-	if cmd != nil {
-		t.Errorf("cmd = %v, want nil", cmd)
-	}
-
-	if out := plain(m.View()); !strings.Contains(out, "Proto Map") {
-		t.Errorf("view missing the item title:\n%s", out)
 	}
 }
 

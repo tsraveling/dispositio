@@ -6,7 +6,7 @@ import "testing"
 // constructor put it.
 func newDetail(t *testing.T, it *milestone) detailViewModel {
 	t.Helper()
-	return makeDetailViewModel(it, 80, mustDate(t, "Jun 1 2026"), true)
+	return makeDetailViewModel(it, 80, mustDate(t, "Jun 1 2026"), true, timelineWeeks)
 }
 
 func tasksFixture() *milestone {

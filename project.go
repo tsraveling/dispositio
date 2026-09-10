@@ -134,11 +134,37 @@ func (p *project) itemStartDate(idx int) time.Time {
 }
 
 type project struct {
-	filePath     string
-	name         string
-	startDate    time.Time // zero value means unset
-	items        []milestone
-	usesTimeline bool // Non-timeline projects coming soon!
+	filePath  string
+	name      string
+	startDate time.Time // zero value means unset
+	items     []milestone
+	timeline  timelineMode
+}
+
+// how milestones map onto calendar time.
+type timelineMode int
+
+const (
+	timelineWeeks timelineMode = iota // default; not written to file
+	timelineNone                      // durations kept, dates decorative
+	timelineModeCount
+)
+
+func (t timelineMode) String() string {
+	switch t {
+	case timelineNone:
+		return "None"
+	default:
+		return "Weeks"
+	}
+}
+
+// anything but "None" is Weeks.
+func parseTimelineMode(s string) timelineMode {
+	if strings.EqualFold(strings.TrimSpace(s), "None") {
+		return timelineNone
+	}
+	return timelineWeeks
 }
 
 const dateFormat = "Jan 2 2006"
@@ -202,6 +228,9 @@ func parseProject(content string, prj *project) {
 			if t, err := readDate(v); err == nil {
 				prj.startDate = t
 			}
+		}
+		if v, ok := meta["Timeline"]; ok {
+			prj.timeline = parseTimelineMode(v)
 		}
 
 		lines = lines[consumed:]
@@ -312,7 +341,7 @@ func parseItems(lines []string) []milestone {
 func renderProject(p project) string {
 	var b strings.Builder
 
-	if p.name != "" || !p.startDate.IsZero() {
+	if p.name != "" || !p.startDate.IsZero() || p.timeline != timelineWeeks {
 		meta := make(map[string]string)
 		var keys []string
 
@@ -324,6 +353,11 @@ func renderProject(p project) string {
 		if !p.startDate.IsZero() {
 			keys = append(keys, "Project Start")
 			meta["Project Start"] = writeDate(p.startDate)
+		}
+
+		if p.timeline != timelineWeeks {
+			keys = append(keys, "Timeline")
+			meta["Timeline"] = p.timeline.String()
 		}
 		b.WriteString(writeCodeBlock(keys, meta))
 		b.WriteString("\n")
@@ -385,7 +419,7 @@ func loadProject(fp string) (*project, error) {
 		return nil, err
 	}
 
-	prj := project{filePath: fp, usesTimeline: true}
+	prj := project{filePath: fp}
 	parseProject(string(data), &prj)
 
 	if prj.startDate.IsZero() {

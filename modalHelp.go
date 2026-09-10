@@ -32,6 +32,7 @@ var plannerHelpRows = append([]helpRow{
 	{"↑/↓ j/k", "move cursor"},
 	{"a / o / O", "add item (end / below / above)"},
 	{"e", "rename item or project"},
+	{"s", "project settings"},
 	{"d", "delete item"},
 	{"←/→ h/l", "open / close item detail"},
 	{"K/J", "reorder milestone"},

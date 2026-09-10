@@ -283,6 +283,24 @@ func TestParseProject(t *testing.T) {
 		}
 	})
 
+	t.Run("timeline none", func(t *testing.T) {
+		var p project
+		parseProject("```\nTimeline: none\n```\n", &p)
+		if p.timeline != timelineNone {
+			t.Errorf("timeline = %v, want None", p.timeline)
+		}
+	})
+
+	t.Run("timeline weeks and unknown values default", func(t *testing.T) {
+		for _, src := range []string{"```\nTimeline: Weeks\n```\n", "```\nTimeline: bogus\n```\n", "# M\n"} {
+			var p project
+			parseProject(src, &p)
+			if p.timeline != timelineWeeks {
+				t.Errorf("%q: timeline = %v, want Weeks", src, p.timeline)
+			}
+		}
+	})
+
 	t.Run("empty content yields no items", func(t *testing.T) {
 		var p project
 		parseProject("", &p)

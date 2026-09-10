@@ -40,6 +40,7 @@ type detailViewModel struct {
 	item             *milestone
 	itemStart        time.Time
 	isCurrent        bool
+	timeline         timelineMode
 	taskCursor       int // index into item.tasks
 	subCursor        int // index into the task's subtasks, or -1 when on the task itself
 	mode             detailMode
@@ -53,7 +54,7 @@ type detailViewModel struct {
 	completionNoIdx  int
 }
 
-func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isCurrent bool) detailViewModel {
+func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isCurrent bool, timeline timelineMode) detailViewModel {
 	ta := textarea.New()
 	ta.SetHeight(5)
 	ta.ShowLineNumbers = true
@@ -66,7 +67,7 @@ func makeDetailViewModel(it *milestone, panelWidth int, itemStart time.Time, isC
 	ti.Placeholder = "Task title..."
 	ti.CharLimit = 0
 
-	d := detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
+	d := detailViewModel{item: it, itemStart: itemStart, isCurrent: isCurrent, timeline: timeline, taskCursor: 0, subCursor: -1, textarea: ta, input: ti, panelWidth: panelWidth}
 	d.cursorToFirstUnchecked()
 	return d
 }
@@ -498,9 +499,10 @@ func renderProgressBar(width int, ratio float64, active bool) string {
 	return progress.New(opts...).ViewAs(ratio)
 }
 
-func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart time.Time, isCurrent bool) string {
+func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart time.Time, isCurrent bool, timeline timelineMode) string {
 	title := titleStyle.Render(item.title)
 	active := dv != nil
+	useTimeline := timeline == timelineWeeks
 
 	var desc string
 	if active && dv.mode == detailEditingDesc {
@@ -609,6 +611,12 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 			line3 := dimStyle.Render("n. " + completionNo[dv.completionNoIdx])
 			itemStatus = fmt.Sprintf("%s\n\n%s\n%s", line1, line2, line3)
 		}
+	} else if item.finished.IsZero() && !useTimeline {
+		// No dates in None mode: planned duration is all we know.
+		itemStatus = dimStyle.Render(fmt.Sprintf("Estimated: %dw", item.duration))
+		if active {
+			itemStatus += "\n\n" + dimStyle.Render("~ hit c to mark this item complete. ~")
+		}
 	} else if item.finished.IsZero() {
 		endDate := itemStart.AddDate(0, 0, item.duration*7-1)
 		daysUntil := int(endDate.Sub(now()).Hours() / 24)
@@ -639,15 +647,17 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 		itemStatus = doneStyle.Render(checkmark + " Completed on " + item.finished.Format("Jan 2, 2006"))
 
 		estimated := fmt.Sprintf("Estimated: %dw", item.duration)
-		aw := item.actualWeeks(itemStart)
-		var actual string
-		if aw < 1 {
-			actual = "Actual: <1w"
-		} else {
-			actual = fmt.Sprintf("Actual: %dw", aw)
-		}
 		itemStatus += "\n" + dimStyle.Render(estimated)
-		itemStatus += "\n" + dimStyle.Render(actual)
+		if useTimeline {
+			aw := item.actualWeeks(itemStart)
+			var actual string
+			if aw < 1 {
+				actual = "Actual: <1w"
+			} else {
+				actual = fmt.Sprintf("Actual: %dw", aw)
+			}
+			itemStatus += "\n" + dimStyle.Render(actual)
+		}
 		if active {
 			itemStatus += "\n\n" + dimStyle.Render("-+ change date, shift: by week")
 		}
@@ -671,6 +681,11 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 		var rate string
 		if incomplete == 0 {
 			rate = "All subtasks complete!"
+		} else if !useTimeline {
+			rate = fmt.Sprintf("%d tasks remaining", incomplete)
+			if incomplete == 1 {
+				rate = "1 task remaining"
+			}
 		} else {
 			endDate := itemStart.AddDate(0, 0, item.duration*7-1)
 			weekdaysLeft := weekdaysBetween(now(), endDate)
@@ -749,14 +764,14 @@ func getBody(item *milestone, dv *detailViewModel, width, height int, itemStart 
 }
 
 func (d *detailViewModel) View(w, h int) string {
-	body := getBody(d.item, d, w, h, d.itemStart, d.isCurrent)
+	body := getBody(d.item, d, w, h, d.itemStart, d.isCurrent, d.timeline)
 	return detailStyle(w, h, true).Render(body)
 }
 
-func detailViewInactive(it *milestone, w, h int, itemStart time.Time, isCurrent bool) string {
+func detailViewInactive(it *milestone, w, h int, itemStart time.Time, isCurrent bool, timeline timelineMode) string {
 	if it == nil {
 		return ""
 	}
-	body := getBody(it, nil, w, h, itemStart, isCurrent)
+	body := getBody(it, nil, w, h, itemStart, isCurrent, timeline)
 	return detailStyle(w, h, false).Render(body)
 }
